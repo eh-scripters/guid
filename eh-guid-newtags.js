@@ -4,7 +4,7 @@
 // @match https://e-hentai.org/tools.php*act=newtags*
 // @match http://e-hentai.org/tools.php*act=newtags*
 // @grant none
-// @version 20190323
+// @version 20190331
 // ==/UserScript==
 /*
 @licstart
