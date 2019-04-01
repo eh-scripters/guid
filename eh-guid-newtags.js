@@ -20,27 +20,25 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
 "use strict;"
 // If you use anchors for namespacing replace the URL below with the forum link
-var NSURL = "https://forums.e-hentai.org/index.php?showtopic=88776&st=9999999"
+var NSURL = 'https://forums.e-hentai.org/index.php?showtopic=199295&st=999999'
 
-function addCheckNode(linkNode) {
-  var baseToolsURL = "/tools.php?act=taglist&";
-  var userID = /showuser=(\w+)/.exec(linkNode);
-  var galleryID = /\/g\/(\w+)/.exec(linkNode);
+function addCheckNode(nodeSel, idRegex, urlArg) {
+  var baseToolsURL = '/tools.php?act=taglist&';
+  var links = document.querySelectorAll(nodeSel);
+  for (var i=0; i < links.length; i++) {
+    var ugID = idRegex.exec(links[i]);
+    if (!ugID)
+      continue;
 
-  if (!userID && !galleryID)
-    return;
-
-  var checkNode = document.createElement("a");
-  var checkText = document.createTextNode("✔");
-  checkNode.style = "padding-right:5px";
-  checkNode.appendChild(checkText);
-
-  if (!!userID)
-    checkNode.setAttribute("href", baseToolsURL + "uid=" + userID[1]);
-  else
-    checkNode.setAttribute("href", baseToolsURL + "gid=" + galleryID[1]);
-
-  linkNode.parentNode.insertBefore(checkNode, linkNode);
+    ugID = ugID[1];
+    var checkNode = document.createElement('a');
+    checkNode.setAttribute('target', '_blank');
+    var checkText = document.createTextNode('✔');
+    checkNode.style = 'padding-right:5px';
+    checkNode.appendChild(checkText);
+    checkNode.setAttribute('href', baseToolsURL + urlArg + ugID);
+    links[i].parentNode.insertBefore(checkNode, links[i]);
+  }
 }
 
 function toggleVotes() {
@@ -49,12 +47,9 @@ function toggleVotes() {
 }
 
 function init() {
-  var selectors = "a[href*='showuser'], a[href*='/g/']:not([onclick]), p.g2 > a";
-  var links = document.querySelectorAll(selectors);
+  addCheckNode('a[href*="showuser"]', /showuser=(\w+)/, 'uid=');
+  addCheckNode('a[href*="/g/"]', /\/g\/(\w+)/, 'gid=');
   var loc = window.location.href;
-
-  for (var i = 0; i < links.length; i++)
-    addCheckNode(links[i]);
 
   var a = document.createElement("a");
   var div = document.createElement("div");
@@ -145,17 +140,15 @@ function init() {
   var tr = document.querySelectorAll("tr");
   var tagStatus = "";
 
-  for (var i=0; i<tr.length; i++)
-  {
+  for (var i=0; i<tr.length; i++) {
     if (!!tr[i-1])
       tr[i].id = tr[i-1].id;
 
-    if (tr[i].children.length == 3)
-      {
-        var tagName = tr[i].children[2].textContent;
+    if (tr[i].children.length == 4) {
+        var tagName = tr[i].children[3].textContent;
 
         tr[i].children[2].innerHTML = "<a href="+
-          encodeURI("http://g.e-hentai.org/tools.php?act=tagns&searchtag="+
+          encodeURI("/tools.php?act=tagns&searchtag="+
           tagName.replace(/\s/g,'+'))+'>'+tagName+"</a>";
 
         tr[i].className = "tag";
@@ -168,8 +161,7 @@ function init() {
           if (tagName.indexOf(":") > -1)
             tagStatus = "NS";
 
-        switch (tagStatus)
-          {
+        switch (tagStatus) {
             case "B":
               tr[i].id = "b";
 
