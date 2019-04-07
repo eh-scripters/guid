@@ -93,8 +93,12 @@ function addStyle(header, table) {
     if (userID == ownID)
       userList[i].style.border = '5px solid';
 
-    totalScore += score
+    totalScore += score;
   }
+  tagGroup = header.querySelector('td:nth-of-type(2)');
+  tagGroup.innerHTML = '<a href="/tools.php?act=taggroup&mastertag='
+  +tagGroup.textContent+'">'+tagGroup.textContent+'</a>';
+
   tagName = header.querySelector('td:nth-of-type(3)');
   var scoreText = document.createTextNode(' (' + totalScore + ')');
   tagName.appendChild(scoreText);
