@@ -116,7 +116,7 @@ function init() {
     var nsLink = document.createElement('a');
     nsLink.setAttribute('target', '_blank');
     // tagGroup is the tagid so mere concatenation is harmless
-    var url = '/tools.php?act=tagns&searchtag=' + tagGroup;
+    var url = '/tools.php?act=taggroup&mastertag=' + tagGroup;
     nsLink.setAttribute('href', url);
     nsLink.appendChild(nsText);
     // do not use .firstElementChild, we need to replace the text itself
