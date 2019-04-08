@@ -20,7 +20,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
 "use strict;"
 // If you use anchors for namespacing replace the URL below with the forum link
-var NSURL = 'https://forums.e-hentai.org/index.php?showtopic=199295&st=999999'
+var NSURL = 'https://forums.e-hentai.org/index.php?showtopic=199295&st=999999';
 
 function addCheckNode(nodeSel, idRegex, urlArg) {
   var baseToolsURL = '/tools.php?act=taglist&';
@@ -34,210 +34,116 @@ function addCheckNode(nodeSel, idRegex, urlArg) {
     var checkNode = document.createElement('a');
     checkNode.setAttribute('target', '_blank');
     var checkText = document.createTextNode('✔');
-    checkNode.style = 'padding-right:5px';
+    checkNode.style.paddingRight = '5px';
     checkNode.appendChild(checkText);
     checkNode.setAttribute('href', baseToolsURL + urlArg + ugID);
     links[i].parentNode.insertBefore(checkNode, links[i]);
   }
 }
 
-function toggleVotes() {
-  form.tv.value = -form.tv.value;
-  form.submit();
+function makeButtonPair(text, query) {
+  var showText = document.createTextNode('Show ' + text);
+  var hideText = document.createTextNode('Hide ' + text);
+  var showSpan = document.createElement('span');
+  var hideSpan = document.createElement('span');
+  showSpan.appendChild(showText);
+  hideSpan.appendChild(hideText);
+  showSpan.addEventListener('click', function() {
+    for (var i=0; i < query.length; i++) {
+      query[i].style.display = 'table-row';
+    }
+    showSpan.style.cursor = 'text';
+    showSpan.style.opacity = '0.3';
+    hideSpan.style.cursor = 'pointer';
+    hideSpan.style.opacity = '1';
+  });
+  hideSpan.addEventListener('click', function() {
+    for (var i=0; i < query.length; i++) {
+      query[i].style.display = 'none';
+    }
+    hideSpan.style.cursor = 'text';
+    hideSpan.style.opacity = '0.3';
+    showSpan.style.cursor = 'pointer';
+    showSpan.style.opacity = '1';
+  });
+  var span = document.createElement('span');
+  hideSpan.style.cursor = 'pointer';
+  showSpan.style.opacity = '0.3';
+  span.appendChild(hideSpan);
+  span.appendChild(showSpan);
+  // button pair is close to each other and further away trom other spans
+  showSpan.style.marginLeft = '0.5em';
+  span.style.marginLeft = '3em';
+  return span;
 }
 
 function init() {
   addCheckNode('a[href*="showuser"]', /showuser=(\w+)/, 'uid=');
   addCheckNode('a[href*="/g/"]', /\/g\/(\w+)/, 'gid=');
-  var loc = window.location.href;
 
-  var a = document.createElement("a");
-  var div = document.createElement("div");
-
-  var form = document.createElement("form");
-  form.method = "GET";
-
-  var actTools = document.createElement("input");
-  actTools.name = "act";
-  actTools.type = "hidden";
-  actTools.value = "newtags";
-
-  var checkM = document.createElement("input");
-  checkM.name = "hm";
-  checkM.type = "checkbox";
-  checkM.checked = (loc.indexOf("hm=on") > 0);
-
-  var labelM = document.createElement("label");
-  labelM.htmlFor = "hm";
-  labelM.textContent = "Hide misc";
-
-  var checkB = document.createElement("input");
-  checkB.name = "hb";
-  checkB.type = "checkbox";
-  checkB.checked = (loc.indexOf("hb=on") > 0);
-
-  var labelB = document.createElement("label");
-  labelB.htmlFor = "hb";
-  labelB.textContent = "Hide blocked";
-
-  var checkS = document.createElement("input");
-  checkS.name = "hs";
-  checkS.type = "checkbox";
-  checkS.checked = (loc.indexOf("hs=on") > 0);
-
-  var labelS = document.createElement("label");
-  labelS.htmlFor = "hs";
-  labelS.textContent = "Hide slaved";
-
-  var checkNS = document.createElement("input");
-  checkNS.name = "hns";
-  checkNS.type = "checkbox";
-  checkNS.checked = (loc.indexOf("hns=on") > 0);
-
-  var labelNS = document.createElement("label");
-  labelNS.htmlFor = "hns";
-  labelNS.textContent = "Hide namespaced";
-
-  var toggleButton = document.createElement("button");
-
-  toggleButton.name = "tv";
-  toggleButton.textContent = "Toggle votes";
-  toggleButton.style = "margin-left:10px";
-  toggleButton.value = (loc.indexOf("tv=-1") > 0) ? -1 : 1;
-  toggleButton.onclick = function() { toggleVotes(); };
-
-  var submitButton = document.createElement("button");
-  submitButton.type = "submit";
-  submitButton.textContent = "Set";
-  submitButton.style = "margin-left:10px";
-
-  div.style.textAlign = "center";
-  div.style.backgroundColor = "gainsboro";
-
-  a.setAttribute("href", NSURL);
-  a.textContent = "Tag grouping and namespacing thread";
-  a.style.fontWeight = "bold";
-
-  div.appendChild(a);
-  form.appendChild(actTools);
-  form.appendChild(checkM);
-  form.appendChild(labelM);
-  form.appendChild(checkB);
-  form.appendChild(labelB);
-  form.appendChild(checkS);
-  form.appendChild(labelS);
-  form.appendChild(checkNS);
-  form.appendChild(labelNS);
-  form.appendChild(toggleButton);
-  form.appendChild(submitButton);
-  div.appendChild(form);
-
-  if (!form.tv.value)
-    form.tv.value = 1;
-
-  document.body.insertBefore(div, document.body.firstElementChild);
-
-  var tr = document.querySelectorAll("tr");
-  var tagStatus = "";
-
-  for (var i=0; i<tr.length; i++) {
-    if (!!tr[i-1])
-      tr[i].id = tr[i-1].id;
-
+  var tr = document.querySelectorAll('tr');
+  for (var i=0; i < tr.length; i++) {
     if (tr[i].children.length == 4) {
-        var tagName = tr[i].children[3].textContent;
-
-        tr[i].children[2].innerHTML = "<a href="+
-          encodeURI("/tools.php?act=tagns&searchtag="+
-          tagName.replace(/\s/g,'+'))+'>'+tagName+"</a>";
-
-        tr[i].className = "tag";
-        tagStatus = tr[i].children[0].textContent;
-
-        if (tagStatus == "-")
-          tagStatus = tr[i].children[1].textContent;
-
-        if (tagStatus == "-")
-          if (tagName.indexOf(":") > -1)
-            tagStatus = "NS";
-
-        switch (tagStatus) {
-            case "B":
-              tr[i].id = "b";
-
-              if (form.hb.checked)
-                tr[i].style = "display:none";
-
-              else
-              {
-                tr[i].style.backgroundColor = "lightpink";
-                tr[i].style.color = "red";
-              }
-
-              break;
-
-            case "S":
-              tr[i].id = "s";
-
-              if (form.hs.checked)
-                tr[i].style = "display:none";
-
-              else
-              {
-                tr[i].style.backgroundColor = "gainsboro";
-                tr[i].style.color = "grey";
-              }
-
-              break;
-
-            case "NS":
-              tr[i].id = "ns";
-
-              if (form.hns.checked)
-                tr[i].style = "display:none";
-
-              else
-              {
-                tr[i].style.backgroundColor = "lightgreen";
-                tr[i].style.color = "green";
-              }
-
-              break;
-
-            default:
-              tr[i].id = "m";
-
-              if (form.hm.checked)
-                tr[i].style = "display:none";
-
-              else
-                {
-                  tr[i].style.backgroundColor = "lightblue";
-                  tr[i].style.color = "blue";
-                }
-
-              break;
-          }
-      }
+      tr[i].classList.add('tag_row');
+    }
+    if (tr[i].children.length == 5) {
+      tr[i].classList.add('vote_row');
+    }
   }
 
-  var selector = "none";
+  var tags = document.querySelectorAll('.tag_row');
+  for (var i=0; i < tags.length; i++) {
+    var tagName = tags[i].children[3].textContent;
+    if ('B' == tags[i].children[0].textContent) {
+      tags[i].classList.add('blacklisted');
+      tags[i].style.backgroundColor = 'lightpink';
+      tags[i].style.color = 'red';
+    } else if ('S' == tags[i].children[1].textContent) {
+      tags[i].classList.add('slaved');
+      tags[i].style.backgroundColor = 'gainsboro';
+      tags[i].style.color = 'grey';
+    } else if (tagName.indexOf(':') > -1) {
+      tags[i].classList.add('namespaced');
+      tags[i].style.backgroundColor = 'lightgreen';
+      tags[i].style.color = 'green';
+    } else {
+      tags[i].classList.add('misc');
+      tags[i].style.backgroundColor = 'lightblue';
+      tags[i].style.color = 'blue';
+    }
 
-  if (form.tv.value < 0)
-    selector += ",tr:not(.tag)";
-  if (form.hb.checked)
-    selector += ",tr#b";
-  if (form.hs.checked)
-    selector += ",tr#s";
-  if (form.hns.checked)
-    selector += ",tr#ns";
-  if (form.hm.checked)
-    selector += ",tr#m";
+    var nsText = document.createTextNode(tagName);
+    var nsLink = document.createElement('a');
+    nsLink.setAttribute('target', '_blank');
+    // just use %20 to enode all spaces, don't try to be clever with `+`
+    var url = encodeURIComponent('/tools.php?act=tagns&searchtag=' + tagName);
+    nsLink.setAttribute('href', url);
+    nsLink.appendChild(nsText);
+    // do not use .firstElementChild, we need to replace the text itself
+    tags[i].children[3].replaceChild(nsLink, tags[i].children[3].firstChild);
+  }
 
-  var tagVotes = document.querySelectorAll(selector);
+  var div = document.createElement('div');
+  div.appendChild(makeButtonPair(
+    'Votes', document.querySelectorAll('.vote_row')));
+  div.appendChild(makeButtonPair(
+    'Blacklisted', document.querySelectorAll('.blacklisted')));
+  div.appendChild(makeButtonPair(
+    'Slaved', document.querySelectorAll('.slaved')));
+  div.appendChild(makeButtonPair(
+    'Namespaced', document.querySelectorAll('.namespaced')));
+  div.appendChild(makeButtonPair(
+    'Misc', document.querySelectorAll('.misc')));
 
-  for (var i = 0; i < tagVotes.length; i++)
-    tagVotes[i].style = "display:none";
+  div.style.textAlign = 'center';
+  div.style.backgroundColor = 'gainsboro';
+  div.style.position = 'fixed';
+  div.style.top = '0';
+  div.style.width = '100%';
+  // make space for the fixed div
+  firstElement = document.body.firstElementChild;
+  firstElement.style.marginTop = '1em';
+  document.body.insertBefore(div, firstElement);
 }
 
 init();
