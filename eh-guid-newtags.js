@@ -122,11 +122,11 @@ function init() {
     // do not use .firstElementChild, we need to replace the text itself
     tags[i].children[2].replaceChild(nsLink, tags[i].children[2].firstChild);
     
-    var nsText = document.createTextNode(tagName);
-    var nsLink = document.createElement('a');
+    nsText = document.createTextNode(tagName);
+    nsLink = document.createElement('a');
     nsLink.setAttribute('target', '_blank');
     // just use %20 to encode all spaces, don't try to be clever with '+'
-    var url = '/tools.php?act=tagns&searchtag=' + encodeURIComponent(tagName);
+    url = '/tools.php?act=tagns&searchtag=' + encodeURIComponent(tagName);
     nsLink.setAttribute('href', url);
     nsLink.appendChild(nsText);
     tags[i].children[3].replaceChild(nsLink, tags[i].children[3].firstChild);
