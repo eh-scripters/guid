@@ -93,6 +93,7 @@ function init() {
 
   var tags = document.querySelectorAll('.tag_row');
   for (var i=0; i < tags.length; i++) {
+    var tagGroup = tags[i].children[2].textContent;
     var tagName = tags[i].children[3].textContent;
     if ('B' == tags[i].children[0].textContent) {
       tags[i].classList.add('blacklisted');
@@ -111,15 +112,23 @@ function init() {
       tags[i].style.backgroundColor = 'lightblue';
       tags[i].style.color = 'blue';
     }
-
-    var nsText = document.createTextNode(tagName);
+    var nsText = document.createTextNode(tagGroup);
     var nsLink = document.createElement('a');
     nsLink.setAttribute('target', '_blank');
-    // just use %20 to enode all spaces, don't try to be clever with `+`
-    var url = encodeURIComponent('/tools.php?act=tagns&searchtag=' + tagName);
+    // tagGroup is the tagid so mere concatenation is harmless
+    var url = '/tools.php?act=tagns&searchtag=' + tagGroup;
     nsLink.setAttribute('href', url);
     nsLink.appendChild(nsText);
     // do not use .firstElementChild, we need to replace the text itself
+    tags[i].children[2].replaceChild(nsLink, tags[i].children[2].firstChild);
+    
+    var nsText = document.createTextNode(tagName);
+    var nsLink = document.createElement('a');
+    nsLink.setAttribute('target', '_blank');
+    // just use %20 to encode all spaces, don't try to be clever with '+'
+    var url = '/tools.php?act=tagns&searchtag=' + encodeURIComponent(tagName);
+    nsLink.setAttribute('href', url);
+    nsLink.appendChild(nsText);
     tags[i].children[3].replaceChild(nsLink, tags[i].children[3].firstChild);
   }
 
