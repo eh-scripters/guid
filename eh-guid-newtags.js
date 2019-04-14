@@ -4,7 +4,7 @@
 // @match https://e-hentai.org/tools.php*act=newtags*
 // @match http://e-hentai.org/tools.php*act=newtags*
 // @grant none
-// @version 20190408
+// @version 20190415
 // ==/UserScript==
 /*
 @licstart
@@ -41,7 +41,7 @@ function addCheckNode(nodeSel, idRegex, urlArg) {
   }
 }
 
-function makeButtonPair(text, query) {
+function makeButtonPair(text, query, hideCallback, showCallback) {
   var showText = document.createTextNode('Show ' + text);
   var hideText = document.createTextNode('Hide ' + text);
   var showSpan = document.createElement('span');
@@ -50,7 +50,7 @@ function makeButtonPair(text, query) {
   hideSpan.appendChild(hideText);
   showSpan.addEventListener('click', function() {
     for (var i=0; i < query.length; i++) {
-      query[i].style.display = 'table-row';
+      showCallback(query[i]);
     }
     showSpan.style.cursor = 'text';
     showSpan.style.opacity = '0.3';
@@ -59,7 +59,7 @@ function makeButtonPair(text, query) {
   });
   hideSpan.addEventListener('click', function() {
     for (var i=0; i < query.length; i++) {
-      query[i].style.display = 'none';
+      hideCallback(query[i]);
     }
     hideSpan.style.cursor = 'text';
     hideSpan.style.opacity = '0.3';
@@ -77,40 +77,104 @@ function makeButtonPair(text, query) {
   return span;
 }
 
+function Tag(elem, votes) {
+  this.elem = elem;
+  this.showThis = true;
+  this.votes = votes;
+  this.showTagVotes = true;
+}
+Tag.prototype.hide = function() {
+  this.showThis = false;
+  this.elem.style.display = 'none';
+  for (var i=0; i < this.votes.length; i++) {
+    this.votes[i].style.display = 'none';
+  }
+}
+Tag.prototype.hideVotes = function() {
+  this.showTagVotes = false;
+  for (var i=0; i < this.votes.length; i++) {
+    this.votes[i].style.display = 'none';
+  }
+}
+Tag.prototype.show = function() {
+  this.showThis = true;
+  this.elem.style.display = 'table-row';
+  if (!this.showTagVotes)
+    return;
+  for (var i=0; i < this.votes.length; i++) {
+    this.votes[i].style.display = 'table-row';
+  }
+}
+Tag.prototype.showVotes = function() {
+  this.showTagVotes = true;
+  if (!this.showThis)
+    return;
+  for (var i=0; i < this.votes.length; i++) {
+    this.votes[i].style.display = 'table-row';
+  }
+}
+Tag.prototype.isKlorpa = function() {
+  if (!this.votes.length)
+    return false;  // just in case
+  var firstVote = this.votes[0];
+  return firstVote.children[3].children[1].textContent == 'klorpa';
+}
+
 function init() {
   addCheckNode('a[href*="showuser"]', /showuser=(\w+)/, 'uid=');
   addCheckNode('a[href*="/g/"]', /\/g\/(\w+)/, 'gid=');
 
   var tr = document.querySelectorAll('tr');
+  var tags = [];
+  var currTag = null;
   for (var i=0; i < tr.length; i++) {
     if (tr[i].children.length == 4) {
       tr[i].classList.add('tag_row');
+      currTag = new Tag(tr[i], []);
+      tags.push(currTag);
     }
     if (tr[i].children.length == 5) {
       tr[i].classList.add('vote_row');
+      currTag.votes.push(tr[i]);
     }
   }
 
-  var tags = document.querySelectorAll('.tag_row');
+  var blacklisted = [];
+  var slaved = [];
+  var namespaced = [];
+  var misc = [];
+  // extras
+  var klorpa = [];
   for (var i=0; i < tags.length; i++) {
-    var tagGroup = tags[i].children[2].textContent;
-    var tagName = tags[i].children[3].textContent;
-    if ('B' == tags[i].children[0].textContent) {
-      tags[i].classList.add('blacklisted');
-      tags[i].style.backgroundColor = 'lightpink';
-      tags[i].style.color = 'red';
-    } else if ('S' == tags[i].children[1].textContent) {
-      tags[i].classList.add('slaved');
-      tags[i].style.backgroundColor = 'gainsboro';
-      tags[i].style.color = 'grey';
+    var tr = tags[i].elem;
+    var tagGroup = tr.children[2].textContent;
+    var tagName = tr.children[3].textContent;
+    if ('B' == tr.children[0].textContent) {
+      tr.classList.add('blacklisted');
+      tr.style.backgroundColor = 'lightpink';
+      tr.style.color = 'red';
+      blacklisted.push(tags[i]);
+    } else if ('S' == tr.children[1].textContent) {
+      tr.classList.add('slaved');
+      tr.style.backgroundColor = 'gainsboro';
+      tr.style.color = 'grey';
+      slaved.push(tags[i]);
     } else if (tagName.indexOf(':') > -1) {
-      tags[i].classList.add('namespaced');
-      tags[i].style.backgroundColor = 'lightgreen';
-      tags[i].style.color = 'green';
+      tr.classList.add('namespaced');
+      tr.style.backgroundColor = 'lightgreen';
+      tr.style.color = 'green';
+      namespaced.push(tags[i]);
     } else {
-      tags[i].classList.add('misc');
-      tags[i].style.backgroundColor = 'lightblue';
-      tags[i].style.color = 'blue';
+      tr.classList.add('misc');
+      tr.style.backgroundColor = 'lightblue';
+      tr.style.color = 'blue';
+      // populate extras instead
+      if (tags[i].isKlorpa()) {
+        tr.style.color = 'navy';
+        klorpa.push(tags[i]);
+      } else {
+        misc.push(tags[i]);
+      }
     }
     var nsText = document.createTextNode(tagGroup);
     var nsLink = document.createElement('a');
@@ -120,8 +184,8 @@ function init() {
     nsLink.setAttribute('href', url);
     nsLink.appendChild(nsText);
     // do not use .firstElementChild, we need to replace the text itself
-    tags[i].children[2].replaceChild(nsLink, tags[i].children[2].firstChild);
-    
+    tr.children[2].replaceChild(nsLink, tr.children[2].firstChild);
+
     nsText = document.createTextNode(tagName);
     nsLink = document.createElement('a');
     nsLink.setAttribute('target', '_blank');
@@ -129,20 +193,23 @@ function init() {
     url = '/tools.php?act=tagns&searchtag=' + encodeURIComponent(tagName);
     nsLink.setAttribute('href', url);
     nsLink.appendChild(nsText);
-    tags[i].children[3].replaceChild(nsLink, tags[i].children[3].firstChild);
+    tr.children[3].replaceChild(nsLink, tr.children[3].firstChild);
   }
 
   var div = document.createElement('div');
   div.appendChild(makeButtonPair(
-    'Votes', document.querySelectorAll('.vote_row')));
+    'Votes', tags, h => h.hideVotes(), s => s.showVotes()));
   div.appendChild(makeButtonPair(
-    'Blacklisted', document.querySelectorAll('.blacklisted')));
+    'Blacklisted', blacklisted, h => h.hide(), s => s.show()));
   div.appendChild(makeButtonPair(
-    'Slaved', document.querySelectorAll('.slaved')));
+    'Slaved', slaved, h => h.hide(), s => s.show()));
   div.appendChild(makeButtonPair(
-    'Namespaced', document.querySelectorAll('.namespaced')));
+    'Namespaced', namespaced, h => h.hide(), s => s.show()));
   div.appendChild(makeButtonPair(
-    'Misc', document.querySelectorAll('.misc')));
+    'Misc', misc, h => h.hide(), s => s.show()));
+  // extras
+  div.appendChild(makeButtonPair(
+    'klorpa', klorpa, h => h.hide(), s => s.show()));
 
   div.style.textAlign = 'center';
   div.style.backgroundColor = 'gainsboro';
