@@ -4,7 +4,7 @@
 // @match https://e-hentai.org/tools.php*gid=*
 // @match http://e-hentai.org/tools.php*gid=*
 // @grant none
-// @version 20190408
+// @version 20200918
 // ==/UserScript==
 /*
 @licstart
@@ -23,20 +23,24 @@ var ownID = '5319009'; // (boobies) Replace this with your own user ID
 var adminACL = [ '6'        // Tenboro
                , '25692'    // Angel
 ];
-var vetoACL = [ '68896'     // 3d0xp0xy
-              , '90092'     // Alpha 7
+var vetoACL = [ '90092'     // Alpha 7
+              , '989173'    // Angaver
               , '243587'    // binglo
               , '924439'    // blue penguin
+              , '1207129'   // Cipher-kun
               , '631161'    // chaos-x
               , '16353'     // Dammon
               , '409722'    // danixxx
+              , '1908893'   // Dnkz
               , '2790'      // elgringo
               , '159384'    // etothex
               , '1028280'   // freudia
               , '971620'    // kitsuneH
               , '43883'     // Luna_Flina
               , '589675'    // Maximum_Joe
+              , '317696'    // Miles Edgeworth
               , '1898816'   // Mrsuperhappy
+              , '68896'     // NoNameNoBlame
               , '106471'    // nonotan
               , '241107'    // ohmightycat
               , '154972'    // pop9
