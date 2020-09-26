@@ -17,3 +17,4 @@
         $('#gmid #gd4').append('<a target="_blank" style="position:absolute;bottom:10px;right:19.5%;font-weight:bold;text-decoration:none" href="' + url + '">check</a>');
     });
 })();
+
