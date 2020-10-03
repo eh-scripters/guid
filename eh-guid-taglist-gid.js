@@ -4,7 +4,7 @@
 // @match https://e-hentai.org/tools.php*gid=*
 // @match http://e-hentai.org/tools.php*gid=*
 // @grant none
-// @version 20200918
+// @version 20201003
 // ==/UserScript==
 /*
 @licstart
@@ -44,7 +44,6 @@ var vetoACL = [ '90092'     // Alpha 7
               , '106471'    // nonotan
               , '241107'    // ohmightycat
               , '154972'    // pop9
-              , '176159'    // Rikis
               , '2610932'   // Rinnosuke M.
               , '2203'      // Spectre
               , '1647739'   // Superlatanium
