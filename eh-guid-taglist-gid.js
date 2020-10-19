@@ -25,12 +25,14 @@ var adminACL = [ '6'        // Tenboro
 ];
 var vetoACL = [ '90092'     // Alpha 7
               , '989173'    // Angaver
-              , '243587'    // binglo
+              , '2884'      // Beryl
+              , '243587'    // Binglo
               , '924439'    // blue penguin
-              , '1207129'   // Cipher-kun
               , '631161'    // chaos-x
+              , '1207129'   // Cipher-kun
               , '16353'     // Dammon
               , '409722'    // danixxx
+              , '882044'    // DGze
               , '1908893'   // Dnkz
               , '2790'      // elgringo
               , '159384'    // etothex
@@ -40,10 +42,13 @@ var vetoACL = [ '90092'     // Alpha 7
               , '589675'    // Maximum_Joe
               , '317696'    // Miles Edgeworth
               , '1898816'   // Mrsuperhappy
+              , '248946'    // MSimm1
+              , '3169265'   // nasu_sensei
               , '68896'     // NoNameNoBlame
               , '106471'    // nonotan
               , '241107'    // ohmightycat
               , '154972'    // pop9
+              , '4850902'   // PrincessKaguya
               , '2610932'   // Rinnosuke M.
               , '2203'      // Spectre
               , '1647739'   // Superlatanium
