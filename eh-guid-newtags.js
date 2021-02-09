@@ -3,8 +3,10 @@
 // @description EH GUID New Tags
 // @match https://e-hentai.org/tools.php*act=newtags*
 // @match http://e-hentai.org/tools.php*act=newtags*
+// @match https://repo.e-hentai.org/tools.php*act=newtags*
+// @match http://repo.e-hentai.org/tools.php*act=newtags*
 // @grant none
-// @version 20190415
+// @version 20200209
 // ==/UserScript==
 /*
 @licstart

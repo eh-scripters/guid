@@ -4,10 +4,14 @@
 // @match       https://e-hentai.org/tools.php*
 // @match       http://e-hentai.org/tools.php*
 // @grant       none
-// @version     20170122
+// @version     20200209
 // ==/UserScript==
 /*
 @usage_start
+
+////////////////////////////////////////////////////////////////
+// SCRIPT SUPERSEDED AND NOT MAINTAINED SINCE MASTER TAG CHANGES
+////////////////////////////////////////////////////////////////
 
 # Features (TODO this can be improved)
 
