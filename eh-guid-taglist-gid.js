@@ -6,7 +6,7 @@
 // @match https://repo.e-hentai.org/tools.php*gid=*
 // @match http://repo.e-hentai.org/tools.php*gid=*
 // @grant none
-// @version 20200209
+// @version 20210407
 // ==/UserScript==
 /*
 @licstart
@@ -34,6 +34,7 @@ var vetoACL = [ '90092'     // Alpha 7
               , '1207129'   // Cipher-kun
               , '16353'     // Dammon
               , '409722'    // danixxx
+              , '2115725'   // Deulkkae
               , '882044'    // DGze
               , '1908893'   // Dnkz
               , '2790'      // elgringo
@@ -42,6 +43,7 @@ var vetoACL = [ '90092'     // Alpha 7
               , '971620'    // kitsuneH
               , '43883'     // Luna_Flina
               , '589675'    // Maximum_Joe
+              , '204246'    // meow_pao
               , '317696'    // Miles Edgeworth
               , '1898816'   // Mrsuperhappy
               , '248946'    // MSimm1
