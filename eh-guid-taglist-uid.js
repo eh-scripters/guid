@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name EH GUID User Tag List
-// @description EH GUID User Tag List
-// @match https://e-hentai.org/tools.php*uid=*
-// @match http://e-hentai.org/tools.php*uid=*
+// @description Adds gallery check links and some user stats to taglist uid
 // @match https://repo.e-hentai.org/tools.php*uid=*
 // @match http://repo.e-hentai.org/tools.php*uid=*
 // @grant none
-// @version 20200209
+// @version 20210605
 // ==/UserScript==
 /*
 @licstart
@@ -20,30 +18,30 @@ as published by Sam Hocevar. See the COPYING file for more details.
 @licend
 */
 
-"use strict;"
+"use strict;";
 
-function addCheckNode(linkNode) {
-  var baseToolsURL = '/tools.php?act=taglist&';
-  var galleryID = /\/g\/(\w+)\//.exec(linkNode);
-  if (!galleryID)
-    return;
+(function() {
+  function addCheckNode(linkNode) {
+    var baseToolsURL = "/tools.php?act=taglist&";
+    var galleryID = /\/g\/(\w+)\//.exec(linkNode);
+    if (!galleryID)  // just in case, sometimes it is needed
+      return;
 
-  galleryID = galleryID[1];
-  var checkNode = document.createElement('a');
-  checkNode.setAttribute('target', '_blank');
-  var checkText = document.createTextNode('✔');
-  checkNode.style = 'padding-right:5px';
-  checkNode.appendChild(checkText);
-  checkNode.setAttribute('href', baseToolsURL + 'gid=' + galleryID);
-  linkNode.parentNode.insertBefore(checkNode, linkNode);
-}
+    galleryID = galleryID[1];
+    var checkNode = document.createElement("a");
+    checkNode.setAttribute("target", "_blank");
+    var checkText = document.createTextNode("✔");
+    checkNode.style = "padding-right:5px;";
+    checkNode.appendChild(checkText);
+    checkNode.setAttribute("href", baseToolsURL + "gid=" + galleryID);
+    linkNode.parentNode.insertBefore(checkNode, linkNode);
+  }
 
-function init() {
-  var links = document.querySelectorAll('a[href*="/g/"]');
+  var links = document.querySelectorAll("a[href*='/g/']");
   for (var i=0; i < links.length; i++)
     addCheckNode(links[i]);
 
-  var aDiv = document.querySelector('div:nth-child(2)');
+  var aDiv = document.querySelector("div:nth-child(2)");
   var accText = aDiv.textContent;
   var accStarted = /Started Accuracy = (\w+)%/.exec(accText)[1];
   var accVoted = /Voted Accuracy = (\w+)%/.exec(accText)[1];
@@ -51,41 +49,41 @@ function init() {
   var badVoted = parseFloat(accVoted) < 90;
 
   if ((badStarted) || (badVoted))
-    aDiv.style.color = 'red';
+    aDiv.style.color = "red";
 
-  var stamps = document.querySelectorAll('td:nth-of-type(5)');
+  var stamps = document.querySelectorAll("td:nth-of-type(5)");
   if (stamps.length < 1) {
-    var pElem = document.createElement('p');
-    var sElem = document.createElement('strong');
-    var sText = document.createTextNode('No tagging over the last 30 days');
+    var pElem = document.createElement("p");
+    var sElem = document.createElement("strong");
+    var sText = document.createTextNode("No tagging over the last 30 days");
     sElem.appendChild(sText);
     pElem.appendChild(sElem)
     aDiv.appendChild(pElem);
     return;
   }
 
-  var oldestTag = stamps[stamps.length-1].textContent.replace(' ','T') + 'Z';
+  var oldestTag = stamps[stamps.length-1].textContent.replace(" ","T") + "Z";
   var dateDiff = new Date(Date.now() - new Date(oldestTag));
 
   var days = dateDiff.getUTCDate() - 1;
   var hours = dateDiff.getUTCHours();
   var minutes = dateDiff.getUTCMinutes();
 
-  var activeDays = '';
-  activeDays += (days > 0) ? days + ' days ' : '';
-  activeDays += (hours > 0) ? hours + ' hours ' : '';
-  activeDays += (minutes > 0) ? minutes + ' minutes' : '';
+  var activeDays = "";
+  activeDays += (days > 0) ? days + " days " : "";
+  activeDays += (hours > 0) ? hours + " hours " : "";
+  activeDays += (minutes > 0) ? minutes + " minutes" : "";
 
-  var pElem = document.createElement('p');
-  var pText = document.createTextNode('History: ');
+  var pElem = document.createElement("p");
+  var pText = document.createTextNode("History: ");
   pElem.appendChild(pText);
-  var sElem = document.createElement('strong');
+  var sElem = document.createElement("strong");
   var sText = document.createTextNode(
-    stamps.length + '/1000 tags over the last '+ activeDays);
+    stamps.length + "/1000 tags over the last "+ activeDays);
   sElem.appendChild(sText);
   pElem.appendChild(sElem);
   aDiv.appendChild(pElem);
-}
+})();
 
-init();
+console.log("eh-guid-taglist-uid is active");
 
