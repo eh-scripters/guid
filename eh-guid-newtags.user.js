@@ -4,7 +4,7 @@
 // @match https://repo.e-hentai.org/tools.php*act=newtags*
 // @match http://repo.e-hentai.org/tools.php*act=newtags*
 // @grant none
-// @version 20210605
+// @version 20210615
 // ==/UserScript==
 /*
 @licstart
@@ -232,8 +232,46 @@ as published by Sam Hocevar. See the COPYING file for more details.
   div.style.width = "100%";
   // make space for the fixed div
   firstElement = document.body.firstElementChild;
-  firstElement.style.marginTop = "1em";
-  document.body.insertBefore(div, firstElement);
+  if (firstElement)  // just in case
+    firstElement.style.marginTop = "1em";
+  document.body.appendChild(div);
+
+  var pageNum = 1;
+  var pageSearch = /page=(-?\d+)/.exec(window.location.search);
+  if (pageSearch)
+    pageNum = Number(pageSearch[1]);
+
+  var pnstyle = "position:fixed;background-color:gainsboro;padding:10px;";
+  pnstyle += "font-size:12pt;border:1px solid lavender;top:2em;";
+  pnstyle += "text-align:center;display:block;text-decoration:none;";
+  pnstyle += "color:black;font-family:monospace;";
+  var previous = document.createElement("a");
+  previous.appendChild(document.createTextNode("previous"));
+  previous.style = pnstyle;
+  var next = document.createElement("a");
+  next.appendChild(document.createTextNode("next"));
+  next.style = pnstyle;
+
+  next.style.borderRadius = "2px 50px 50px 2px / 2px 20px 20px 2px";
+  previous.style.borderRadius = "50px 2px 2px 50px / 20px 2px 2px 20px";
+  next.style.right = 0;
+  next.style.paddingRight = "15px";
+  previous.style.left = 0;
+  previous.style.paddingLeft = "15px";
+  var nextPage = "page=" + (pageNum + 1);
+  var previousPage = "page=" + (pageNum - 1);
+  var nURL, pURL;
+  if (pageSearch) {
+    nURL = window.location.href.replace("page=" + pageNum, nextPage);
+    pURL = window.location.href.replace("page=" + pageNum, previousPage);
+  } else {
+    nURL = window.location.href + "&" + nextPage;
+    pURL = window.location.href + "&" + previousPage;
+  }
+  next.setAttribute("href", nURL);
+  previous.setAttribute("href", pURL);
+  document.body.appendChild(next);
+  document.body.appendChild(previous);
 
   // state memory
   var stateVotes = localStorage.getItem(script_uuid + "-show-Votes");
