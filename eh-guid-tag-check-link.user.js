@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Tag Check Links
-// @version      0.3.0
+// @version      0.3.1
 // @description  Add shortcut link(s) to tag checking pages via galleries
 // @author       nasu_sensei
 // @match        https://e-hentai.org/g/*
@@ -18,9 +18,9 @@
       return panel;
     }
     var panel = document.createElement("div");
-    var style = "opacity:0.7;position:fixed;z-index:100;top:0;left:0;";
+    var style = "position:fixed;z-index:100;top:0;left:0;";
     style += "padding:20px;border-radius:3px;border:2px solid white;";
-    style += "text-align:left;font-size:10pt;background:white;";
+    style += "text-align:left;font-size:10pt;";
     panel.style = style;
     panel.setAttribute("id", panelId);
     document.body.appendChild(panel);

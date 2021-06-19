@@ -3,9 +3,10 @@
 // @namespace   EH
 // @description Adds user vote tooltips for checkers
 // @include     https://e-hentai.org/g/*
+// @include     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.2
+// @version     0.3
 // @grant       none
 // ==/UserScript==
 /*
@@ -98,9 +99,9 @@ find this file, see <http://www.gnu.org/licenses/>.
       return panel;
     }
     var panel = document.createElement("div");
-    var style = "opacity:0.7;position:fixed;z-index:100;top:0;left:0;";
+    var style = "position:fixed;z-index:100;top:0;left:0;";
     style += "padding:20px;border-radius:3px;border:2px solid white;";
-    style += "text-align:left;font-size:10pt;background:white;";
+    style += "text-align:left;font-size:10pt;";
     panel.style = style;
     panel.setAttribute("id", panelId);
     document.body.appendChild(panel);
@@ -237,23 +238,30 @@ find this file, see <http://www.gnu.org/licenses/>.
 
   function tipBelow(el, tip) {
     var pos = el.getBoundingClientRect();
+    var taglist = document.getElementById("taglist");
+    var posTaglist = taglist.getBoundingClientRect();
     var div = document.createElement("div");
     var style = "position: absolute;";
     style += "background-color: snow;";
+    style += "color: black;";
     style += "opacity: 0.9;";
     style += "padding: 3px;";
     style += "border-radius: 6px;";
     style += "font-size: 1.2em;";
-    style += "transform: translate(-30%);";
+    style += "transform: translate(-5%);";
     div.style = style;
-    div.style.top = pos.y + pos.height + "px";
-    div.style.left = pos.x + "px";
+    div.style.top = (pos.y - posTaglist.y + pos.height) + "px";
+    div.style.left = (pos.x - posTaglist.x) + "px";
     div.style.zIndex = 110;
     div.style.display = "none";
+    var a = tip.getElementsByTagName("a");
+    for (var i=0; i < a.length; i++) {
+      a[i].style.color = "black";
+    }
     div.appendChild(tip);
     div.className = "user-report-tooltip";
     div.appendChild(tip);
-    document.body.appendChild(div);
+    taglist.appendChild(div);
     return div;
   }
 
