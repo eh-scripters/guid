@@ -4,7 +4,7 @@
 // @match https://repo.e-hentai.org/tools.php*gid=*
 // @match http://repo.e-hentai.org/tools.php*gid=*
 // @grant none
-// @version 20210605
+// @version 20230113
 // ==/UserScript==
 /*
 @licstart
@@ -21,7 +21,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
 "use strict;";
 
 (function() {
-  var ownID = "5319009"; // (boobies) Replace this with your own user ID
+  var ownID = getCookie('ipb_member_id'); // (boobies) Replace this with your own user ID
   var adminACL = [ "6"        // Tenboro
                  , "25692"    // Angel
   ];
@@ -51,6 +51,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
                 , "68896"     // NoNameNoBlame
                 , "106471"    // nonotan
                 , "241107"    // ohmightycat
+                , "892479"    // peterson123
                 , "154972"    // pop9
                 , "4850902"   // PrincessKaguya
                 , "2610932"   // Rinnosuke M.
@@ -135,7 +136,14 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
   for (var i=0; i < tagLists.length; i++)
     addStyle(tagHeader[i], tagLists[i]);
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
 })();
 
 console.log("eh-guid-taglist-gid is active");
+
 
