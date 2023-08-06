@@ -6,7 +6,7 @@
 // @include     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.3
+// @version     0.3.6
 // @grant       none
 // ==/UserScript==
 /*
@@ -36,6 +36,15 @@ follows:
   Hence, if you are changing the tags of the gallery, the best approach is to
   turn off the script temporarily or reload the script once the tagging is
   done.
+
+- show/hide toggles showing fully downvoted tags. The tags are added into the
+  existing table with a red border. Due to them being removed, clicking on them
+  doesn't show the up/down/definition bar as a matter of choice. However the
+  hover effect is still supported and you can see the history of the tag.
+
+- a↻/m↻ (auto reload) toggles between auto and manual reload. When enabled
+  it monitors the tag table and upon being deleted it calls the click event
+  of the reload button.
 
 Known bugs/quirks:
 
@@ -129,6 +138,13 @@ find this file, see <http://www.gnu.org/licenses/>.
     }
   }
 
+  function reloadTips(e) {
+    var tags = curTags();
+    var uid = window.location.pathname.split("/")[2];
+    console.log("Reload");
+    voteList(uid, tags);
+  };
+
   function enrichGuidToogle(panel) {
     var label = document.createElement("div");
     var report = document.createTextNode("report");
@@ -144,12 +160,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     reload.style.opacity = 0.5;
     var reloadText = document.createTextNode("↻");
     reload.appendChild(reloadText);
-    function reloadTips(e) {
-      var tags = curTags();
-      var uid = window.location.pathname.split("/")[2];
-      console.log("Reload");
-      voteList(uid, tags);
-    };
+
 
     var onoff = document.createElement("span");
     var off = document.createTextNode("off");
@@ -183,20 +194,79 @@ find this file, see <http://www.gnu.org/licenses/>.
       }
     });
 
+    var showhide = document.createElement("span");
+    var hide = document.createTextNode("hide");
+    var show = document.createTextNode("show");
+    showhide.style.padding = "2px";
+    showhide.style.cursor = "pointer";
+    showhide.style.color = "crimson";
+    showhide.appendChild(hide);
+    showhide.addEventListener("click", function(e) {
+      // do the search every time
+      var tags = curTags();
+      if (showhide.contains(hide)) {
+        console.log("Turn on");
+        showhide.style.color = "seagreen";
+        localStorage.setItem(script_uuid + "showhide", "show");
+        showhide.replaceChild(show, hide);
+      } else {
+        console.log("Turn off");
+        showhide.style.color = "crimson";
+        localStorage.setItem(script_uuid + "showhide", "hide");
+        showhide.replaceChild(hide, show);
+      }
+    });
+
+    if(stateSh == "show") {
+      showhide.style.color = "seagreen";
+      showhide.replaceChild(show, hide);
+    }
+
+    var aronoff = document.createElement("span");
+    var aron = document.createTextNode("a↻");
+    var aroff = document.createTextNode("m↻");
+    aronoff.style.padding = "2px";
+    aronoff.style.cursor = "pointer";
+    aronoff.style.color = "crimson";
+    aronoff.appendChild(aroff);
+    aronoff.addEventListener("click", function(e) {
+      // do the search every time
+      var tags = curTags();
+      if (aronoff.contains(aroff)) {
+        console.log("Turn on");
+        aronoff.style.color = "seagreen";
+        localStorage.setItem(script_uuid + "ar", "a↻");
+        aronoff.replaceChild(aron, aroff);
+      } else {
+        console.log("Turn off");
+        aronoff.style.color = "crimson";
+        localStorage.setItem(script_uuid + "ar", "m↻");
+        aronoff.replaceChild(aroff, aron);
+      }
+    });
+
+    if(stateAr == "a↻") {
+      aronoff.style.color = "seagreen";
+      aronoff.replaceChild(aron, aroff);
+    }
+
     buttons.appendChild(onoff);
     buttons.appendChild(reload);
+    buttons.appendChild(document.createElement("br"));
+    buttons.appendChild(showhide);
+    buttons.appendChild(aronoff);
     panel.appendChild(label);
     panel.appendChild(buttons);
-    return onoff;
+    return { onoff: onoff, showhide: showhide };
   }
 
   function voteList(uid, elems) {
     console.log("Found", elems.length, "tags for uid", uid);
     var turl = taglistUrl + uid;
-    var req = new XMLHttpRequest();
+    var req = new window.XMLHttpRequest();
     req.addEventListener("load", function () {
-      console.log("Answer", req.status, req.responseType);
-      enrichTags(req.responseXML, elems);
+        console.log("Answer", req.status, req.responseType);
+        enrichTags(req.responseXML, elems);
     });
     req.open("GET", turl, true);
     req.withCredentials = true;
@@ -205,17 +275,81 @@ find this file, see <http://www.gnu.org/licenses/>.
     req.send();
   }
 
-  function enrichTags(dom, elems) {
+  function reorderReportTags(tags) {
+      tags = Array.from(tags);
+      tags.sort(function(a,b) {
+          var aId = "td_" + a.textContent.replaceAll(" ", "_");
+          var bId = "td_" + b.textContent.replaceAll(" ", "_");
+          var aElem = document.getElementById(aId);
+          var bElem = document.getElementById(bId);
+          if(aElem && !bElem) return 1;
+          if(!aElem && bElem) return -1;
+
+          return 0;
+      });
+      return tags;
+  }
+
+  function enrichTags(dom, elems) {    
     var reportTags = dom.querySelectorAll("a[href*='\/tag\/']");
     console.log("Enrich", reportTags.length, "tags");
     clearTooltips(elems);
+    reportTags = reorderReportTags(reportTags);
     for (var i = 0; i < reportTags.length; i++) {
       var tag = reportTags[i];
+        console.log(tag.textContent);
       var id = "td_" + tag.textContent.replaceAll(" ", "_");
       var elem = document.getElementById(id);
       if (!elem) {
-        console.log("Failed to find tag for id", id);
-        continue;
+        if(stateSh == "show") {
+          var tagText = null;
+          var nameSpace = null;
+          if(tag.textContent.includes(":")) {
+            tagText = tag.textContent.split(":")[1];
+            nameSpace = tag.textContent.split(":")[0] + ":";
+          } else {
+            tagText = tag.textContent.split(":")[0];
+            nameSpace = "";
+          }
+
+          var namespaces = document.getElementsByClassName("tc");
+          var curNS = Array.from(namespaces).find(element => element.innerText == nameSpace);
+          if(!curNS) {
+              var tagTableBody = document.getElementById('taglist').getElementsByTagName('tbody')[0];
+              if(!tagTableBody) {
+                  var tagSection = document.getElementById('taglist');
+                  tagSection.replaceChildren();
+                  tagTableBody = document.createElement("tbody");
+                  var table = document.createElement("table");
+                  table.appendChild(tagTableBody);
+                  tagSection.appendChild(table);
+              }
+              var newNamespace = document.createElement("tr");
+              var newNsTd = document.createElement("td");
+              newNsTd.innerText = nameSpace;
+              newNsTd.className = "tc";
+              newNamespace.appendChild(newNsTd);
+              var newTagTd = document.createElement("td");
+              newNamespace.appendChild(newTagTd);
+              tagTableBody.appendChild(newNamespace);
+              curNS = newNsTd;
+          }
+
+          var tagsTd = curNS.nextSibling;
+          var tagDiv = document.createElement("div");
+          tagDiv.setAttribute("id", id);
+          tagDiv.className = "gt";
+          tagDiv.style.cssText = "border-color:red";
+          var tagNameA = document.createElement("a");
+          tagNameA.innerText = tagText;
+          tagNameA.href = "#";
+          tagDiv.appendChild(tagNameA);
+          tagsTd.appendChild(tagDiv);
+          elem = tagDiv;
+        } else {
+          console.log("Failed to find tag for id", id);
+          continue;
+        }
       }
       var tagTop = tag.parentNode.parentNode.parentNode.parentNode;
       var tip = tagTop.nextElementSibling.children[1];
@@ -239,6 +373,11 @@ find this file, see <http://www.gnu.org/licenses/>.
   function tipBelow(el, tip) {
     var pos = el.getBoundingClientRect();
     var taglist = document.getElementById("taglist");
+    var ad = document.getElementById("spa");
+    var adHeight = 0;
+    if(ad) {
+        adHeight = ad.getBoundingClientRect().height;
+    }
     var posTaglist = taglist.getBoundingClientRect();
     var div = document.createElement("div");
     var style = "position: absolute;";
@@ -250,7 +389,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     style += "font-size: 1.2em;";
     style += "transform: translate(-5%);";
     div.style = style;
-    div.style.top = (pos.y - posTaglist.y + pos.height) + "px";
+    div.style.top = (pos.y - posTaglist.y + pos.height + adHeight) + "px";
     div.style.left = (pos.x - posTaglist.x) + "px";
     div.style.zIndex = 110;
     div.style.display = "none";
@@ -262,16 +401,128 @@ find this file, see <http://www.gnu.org/licenses/>.
     div.className = "user-report-tooltip";
     div.appendChild(tip);
     taglist.appendChild(div);
+    if(addStyle) {
+      var table = div.getElementsByTagName("table");
+      addStyle(table[0]);
+    }
     return div;
   }
 
+  var stateSh = localStorage.getItem(script_uuid + "showhide");
+  var stateAr = localStorage.getItem(script_uuid + "ar");
   var panel = scriptPanel();
-  var onoff = enrichGuidToogle(panel);
+  var buttons = enrichGuidToogle(panel);
+  var onoff = buttons.onoff;
+  var showhide = buttons.showhide;
   var state = localStorage.getItem(script_uuid);
   if ("on" === state) {
     onoff.click();
   }
+
+  function addWatcher() {
+      const watchNode = document.getElementById("taglist");
+      const config = { attributes: false, childList: true, subtree: false };
+      const mutCallback = (mutationList, observer) => {
+          for (const mutation of mutationList) {
+              if (mutation.type === "childList") {
+                  if(mutation.removedNodes.length > 0 && mutation.removedNodes[0].tagName == "TABLE") {
+                      if(localStorage.getItem(script_uuid + "ar") === "a↻") {
+                        reloadTips();
+                      }
+                  }
+              }
+          }
+      };
+      const observer = new MutationObserver(mutCallback);
+      observer.observe(watchNode, config);
+  }
+  addWatcher();
+
+  var ownID = getCookie('ipb_member_id'); // (boobies) Replace this with your own user ID
+  var adminACL = [ "6"        // Tenboro
+                 , "25692"    // Angel
+  ];
+  var vetoACL = [ "90092"     // Alpha 7
+                , "989173"    // Angaver
+                , "2884"      // Beryl
+                , "243587"    // Binglo
+                , "924439"    // blue penguin
+                , "631161"    // chaos-x
+                , "1207129"   // Cipher-kun
+                , "16353"     // Dammon
+                , "409722"    // danixxx
+                , "2115725"   // Deulkkae
+                , "882044"    // DGze
+                , "1908893"   // Dnkz
+                , "2790"      // elgringo
+                , "159384"    // etothex
+                , "1028280"   // freudia
+                , "971620"    // kitsuneH
+                , "43883"     // Luna_Flina
+                , "589675"    // Maximum_Joe
+                , "204246"    // meow_pao
+                , "317696"    // Miles Edgeworth
+                , "1898816"   // Mrsuperhappy
+                , "248946"    // MSimm1
+                , "3169265"   // nasu_sensei
+                , "68896"     // NoNameNoBlame
+                , "106471"    // nonotan
+                , "241107"    // ohmightycat
+                , "892479"    // peterson123
+                , "154972"    // pop9
+                , "4850902"   // PrincessKaguya
+                , "2610932"   // Rinnosuke M.
+                , "2203"      // Spectre
+                , "1647739"   // Superlatanium
+                , "976341"    // svines85
+                , "582527"    // TheGreyPanther
+                , "301767"    // varst
+  ];
+
+    function addStyle(table) {
+    var adminUp = "background-color:gold; color:green; font-weight:bold;";
+    var adminDown = "background-color:gold; color:red; font-weight:bold;";
+    var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
+    var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
+    var scoreList = table.querySelectorAll("td:nth-of-type(1)");
+    var userList = table.querySelectorAll("td:nth-of-type(2)");
+    var totalScore = 0;
+    for (var i=0; i < scoreList.length; i++) {
+      var href = userList[i].firstChild.href;
+      var userID = /showuser=(\w+)/.exec(href)[1];
+      var score = parseInt(scoreList[i].textContent);
+      totalScore += score;
+      if (adminACL.indexOf(userID) > -1) {
+        if (score > 0)
+          userList[i].style = adminUp;
+        else
+          userList[i].style = adminDown;
+      } else if (vetoACL.indexOf(userID) > -1) {
+        if (score > 0)
+          userList[i].style = vetoUp;
+        else
+          userList[i].style = vetoDown;
+      }
+
+      if (userID == ownID)
+        userList[i].style.border = "3px solid";
+    }
+        var row = table.getElementsByTagName("tbody")[0].insertRow();
+        row.style = "";
+        if(totalScore > 0) {
+            row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-top: 2px solid black;">+' + totalScore + '</td>';
+        } else if(totalScore == 0) {
+          row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-top: 2px solid black;">&nbsp;' + totalScore + '</td>';
+        } else {
+            row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-top: 2px solid black;">' + totalScore + '</td>';
+        }
+    };
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
 })();
 
-console.log("eh-guid-report-view is active");
-
+console.log("eh-guid-report-view is active")
