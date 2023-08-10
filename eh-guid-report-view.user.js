@@ -2,11 +2,11 @@
 // @name        eh-guid-report-view
 // @namespace   EH
 // @description Adds user vote tooltips for checkers
-// @include     https://e-hentai.org/g/*
-// @include     https://exhentai.org/g/*
+// @match     https://e-hentai.org/g/*
+// @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.3.6
+// @version     0.3.7
 // @grant       none
 // ==/UserScript==
 /*
@@ -38,9 +38,8 @@ follows:
   done.
 
 - show/hide toggles showing fully downvoted tags. The tags are added into the
-  existing table with a red border. Due to them being removed, clicking on them
-  doesn't show the up/down/definition bar as a matter of choice. However the
-  hover effect is still supported and you can see the history of the tag.
+  existing table with a red border. The hover effect is still present and you
+  can see the history of the tag.
 
 - a↻/m↻ (auto reload) toggles between auto and manual reload. When enabled
   it monitors the tag table and upon being deleted it calls the click event
@@ -342,7 +341,8 @@ find this file, see <http://www.gnu.org/licenses/>.
           tagDiv.style.cssText = "border-color:red";
           var tagNameA = document.createElement("a");
           tagNameA.innerText = tagText;
-          tagNameA.href = "#";
+          tagNameA.href = "/tag/" + tag.textContent;
+          tagNameA.setAttribute("onclick","return toggle_tagmenu('" + tag.textContent +"', this)");
           tagDiv.appendChild(tagNameA);
           tagsTd.appendChild(tagDiv);
           elem = tagDiv;
