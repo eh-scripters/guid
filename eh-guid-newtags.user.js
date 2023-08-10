@@ -4,7 +4,7 @@
 // @match https://repo.e-hentai.org/tools.php*act=newtags*
 // @match http://repo.e-hentai.org/tools.php*act=newtags*
 // @grant none
-// @version 20210615
+// @version 20230809
 // ==/UserScript==
 /*
 @licstart
@@ -129,7 +129,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
     }
   }
   Tag.prototype.isKlorpa = function() {
-    if (!this.votes.length)
+    if (this.votes.length < 3)
       return false;  // just in case
     var firstVote = this.votes[0];
     return firstVote.children[3].children[1].textContent == "klorpa";
@@ -148,6 +148,10 @@ as published by Sam Hocevar. See the COPYING file for more details.
       tags.push(currTag);
     }
     if (tr[i].children.length == 5) {
+      tr[i].classList.add("vote_row");
+      currTag.votes.push(tr[i]);
+    }
+    if (tr[i].children.length == 2) {
       tr[i].classList.add("vote_row");
       currTag.votes.push(tr[i]);
     }
@@ -227,6 +231,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
   div.style.textAlign = "center";
   div.style.backgroundColor = "gainsboro";
+  div.style.color = "black";
   div.style.position = "fixed";
   div.style.top = "0";
   div.style.width = "100%";
