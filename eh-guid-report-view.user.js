@@ -442,8 +442,8 @@ find this file, see <http://www.gnu.org/licenses/>.
   var adminACL = [ "6"        // Tenboro
                  , "25692"    // Angel
   ];
-  var vetoACL = [ "90092"     // Alpha 7
-                , "989173"    // Angaver
+  var vetoACL = [ "4850902"   // Agoraphobia
+                , "90092"     // Alpha 7
                 , "2884"      // Beryl
                 , "243587"    // Binglo
                 , "924439"    // blue penguin
@@ -464,14 +464,14 @@ find this file, see <http://www.gnu.org/licenses/>.
                 , "317696"    // Miles Edgeworth
                 , "1898816"   // Mrsuperhappy
                 , "248946"    // MSimm1
-                , "3169265"   // nasu_sensei
+                , "3169265"   // nasu
                 , "68896"     // NoNameNoBlame
                 , "106471"    // nonotan
                 , "241107"    // ohmightycat
                 , "892479"    // peterson123
                 , "154972"    // pop9
-                , "4850902"   // PrincessKaguya
                 , "2610932"   // Rinnosuke M.
+                , "989173"    // Shank
                 , "2203"      // Spectre
                 , "1647739"   // Superlatanium
                 , "976341"    // svines85
