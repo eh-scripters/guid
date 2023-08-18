@@ -2,9 +2,9 @@
 // @name EH GUID User Tag List
 // @description Adds gallery check links and some user stats to taglist uid
 // @match https://repo.e-hentai.org/tools.php*uid=*
-// @match http://repo.e-hentai.org/tools.php*uid=*
+// @match https://repo.e-hentai.org/tools/*uid=*
 // @grant none
-// @version 20210605
+// @version 20230818
 // ==/UserScript==
 /*
 @licstart
@@ -22,7 +22,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
 (function() {
   function addCheckNode(linkNode) {
-    var baseToolsURL = "/tools.php?act=taglist&";
+    var baseToolsURL = "/tools/taglist?";
     var galleryID = /\/g\/(\w+)\//.exec(linkNode);
     if (!galleryID)  // just in case, sometimes it is needed
       return;
@@ -86,4 +86,3 @@ as published by Sam Hocevar. See the COPYING file for more details.
 })();
 
 console.log("eh-guid-taglist-uid is active");
-

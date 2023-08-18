@@ -2,9 +2,10 @@
 // @name EH GUID Gallery Tag List
 // @description Adds user tag check and tag group links to tools.php gid
 // @match https://repo.e-hentai.org/tools.php*gid=*
-// @match http://repo.e-hentai.org/tools.php*gid=*
+// @match https://repo.e-hentai.org/tools/*gid=*
+// @match https://repo.e-hentai.org/tools/temptags*
 // @grant none
-// @version 20230113
+// @version 20230818
 // ==/UserScript==
 /*
 @licstart
@@ -61,10 +62,10 @@ as published by Sam Hocevar. See the COPYING file for more details.
                 , "582527"    // TheGreyPanther
                 , "301767"    // varst
   ];
-  var masterURL = "/tools.php?act=taggroup&mastertag=";
+  var masterURL = "/tools/taggroup?mastertag=";
 
   function addCheckNode(linkNode) {
-    var baseToolsURL = "/tools.php?act=taglist&";
+    var baseToolsURL = "/tools/taglist?";
     var userID = /showuser=(\w+)/.exec(linkNode);
     if (!userID)  // just in case, sometimes it is needed
       return;
@@ -80,6 +81,9 @@ as published by Sam Hocevar. See the COPYING file for more details.
   }
 
   function addStyle(header, table) {
+    if(table === undefined) {
+        return;
+    }
     var adminUp = "background-color:gold; color:green; font-weight:bold;";
     var adminDown = "background-color:gold; color:red; font-weight:bold;";
     var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
@@ -145,5 +149,3 @@ as published by Sam Hocevar. See the COPYING file for more details.
 })();
 
 console.log("eh-guid-taglist-gid is active");
-
-

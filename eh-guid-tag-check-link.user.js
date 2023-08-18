@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Tag Check Links
-// @version      0.3.1
+// @version      0.3.2
 // @description  Add shortcut link(s) to tag checking pages via galleries
 // @author       nasu_sensei
 // @match        https://e-hentai.org/g/*
@@ -29,7 +29,7 @@
     return panel;
   }
 
-  var baseToolsURL = "https://repo.e-hentai.org/tools.php?act=taglist&gid=";
+  var baseToolsURL = "https://repo.e-hentai.org/tools/taglist?gid=";
   var galleryID = window.location.pathname.split("/")[2];
 
   var label = document.createElement("div");

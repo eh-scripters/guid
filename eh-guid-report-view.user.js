@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.3.7
+// @version     0.4.0
 // @grant       none
 // ==/UserScript==
 /*
@@ -98,7 +98,7 @@ find this file, see <http://www.gnu.org/licenses/>.
 
 (function () {
   var script_uuid = "eh-guid-report-view";
-  var taglistUrl = "https://repo.e-hentai.org/tools.php?act=taglist&gid=";
+  var taglistUrl = "https://repo.e-hentai.org/tools/taglist?gid=";
 
   function scriptPanel() {
     var panelId = "penguin-script-panel";
@@ -296,7 +296,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     reportTags = reorderReportTags(reportTags);
     for (var i = 0; i < reportTags.length; i++) {
       var tag = reportTags[i];
-        console.log(tag.textContent);
+      console.log(tag.textContent);
       var id = "td_" + tag.textContent.replaceAll(" ", "_");
       var elem = document.getElementById(id);
       if (!elem) {
@@ -338,7 +338,7 @@ find this file, see <http://www.gnu.org/licenses/>.
           var tagDiv = document.createElement("div");
           tagDiv.setAttribute("id", id);
           tagDiv.className = "gt";
-          tagDiv.style.cssText = "border-color:red";
+          tagDiv.style.borderColor = "red";
           var tagNameA = document.createElement("a");
           tagNameA.innerText = tagText;
           tagNameA.href = "/tag/" + tag.textContent;
@@ -403,7 +403,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     taglist.appendChild(div);
     if(addStyle) {
       var table = div.getElementsByTagName("table");
-      addStyle(table[0]);
+      addStyle(table[0], el);
     }
     return div;
   }
@@ -438,7 +438,7 @@ find this file, see <http://www.gnu.org/licenses/>.
   }
   addWatcher();
 
-  var ownID = getCookie('ipb_member_id'); // (boobies) Replace this with your own user ID
+  var ownID = getCookie('ipb_member_id');
   var adminACL = [ "6"        // Tenboro
                  , "25692"    // Angel
   ];
@@ -479,43 +479,69 @@ find this file, see <http://www.gnu.org/licenses/>.
                 , "301767"    // varst
   ];
 
-    function addStyle(table) {
-    var adminUp = "background-color:gold; color:green; font-weight:bold;";
-    var adminDown = "background-color:gold; color:red; font-weight:bold;";
-    var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
-    var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
-    var scoreList = table.querySelectorAll("td:nth-of-type(1)");
-    var userList = table.querySelectorAll("td:nth-of-type(2)");
-    var totalScore = 0;
-    for (var i=0; i < scoreList.length; i++) {
-      var href = userList[i].firstChild.href;
-      var userID = /showuser=(\w+)/.exec(href)[1];
-      var score = parseInt(scoreList[i].textContent);
-      totalScore += score;
-      if (adminACL.indexOf(userID) > -1) {
-        if (score > 0)
-          userList[i].style = adminUp;
-        else
-          userList[i].style = adminDown;
-      } else if (vetoACL.indexOf(userID) > -1) {
-        if (score > 0)
-          userList[i].style = vetoUp;
-        else
-          userList[i].style = vetoDown;
+    function addStyle(table, el) {
+      var adminUp = "background-color:gold; color:green; font-weight:bold;";
+      var adminDown = "background-color:gold; color:red; font-weight:bold;";
+      var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
+      var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
+      var scoreList = table.querySelectorAll("td:nth-of-type(1)");
+      var userList = table.querySelectorAll("td:nth-of-type(2)");
+      var totalScore = 0;
+      var totalVeto = 0;
+      var votedUp = false;
+      var votedDown = false;
+      for (var i=0; i < scoreList.length; i++) {
+        var href = userList[i].firstChild.href;
+        var userID = /showuser=(\w+)/.exec(href)[1];
+        var score = parseInt(scoreList[i].textContent);
+        totalScore += score;
+        if (adminACL.indexOf(userID) > -1) {
+          if (score > 0) {
+            userList[i].style = adminUp;
+          } else {
+            userList[i].style = adminDown;
+            totalVeto = 3;
+          }
+        } else if (vetoACL.indexOf(userID) > -1) {
+          if (score > 0) {
+            userList[i].style = vetoUp;
+          } else {
+            totalVeto++;
+            userList[i].style = vetoDown;
+          }
+        }
+        if (userID == ownID) {
+          userList[i].style.border = "3px solid";
+          if(score > 0) {
+            votedUp = true;
+          } else {
+            votedDown = true;
+          }
+        }
+      }
+      var row = table.getElementsByTagName("tbody")[0].insertRow();
+      row.style = "";
+      if(totalScore > 0) {
+          row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-top: 2px solid black;">+' + totalScore + '</td>';
+      } else if(totalScore == 0) {
+          row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-top: 2px solid black;">&nbsp;' + totalScore + '</td>';
+      } else {
+          row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-top: 2px solid black;">' + totalScore + '</td>';
+      }
+      if(el.style.borderColor === "red") {
+        if(votedUp) {
+            el.firstChild.className = "tup";
+        } else if(votedDown) {
+            el.firstChild.className = "tdn";
+        }
+        if(totalVeto >= 3) {
+        } else if(totalVeto >= 1) {
+            el.className = "gtl";
+        } else {
+            el.className = "gtw";
+        }
       }
 
-      if (userID == ownID)
-        userList[i].style.border = "3px solid";
-    }
-        var row = table.getElementsByTagName("tbody")[0].insertRow();
-        row.style = "";
-        if(totalScore > 0) {
-            row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-top: 2px solid black;">+' + totalScore + '</td>';
-        } else if(totalScore == 0) {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-top: 2px solid black;">&nbsp;' + totalScore + '</td>';
-        } else {
-            row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-top: 2px solid black;">' + totalScore + '</td>';
-        }
     };
 
   function getCookie(name) {

@@ -2,9 +2,9 @@
 // @name EH GUID New Tags
 // @description Adds filters to tools.php newtags
 // @match https://repo.e-hentai.org/tools.php*act=newtags*
-// @match http://repo.e-hentai.org/tools.php*act=newtags*
+// @match https://repo.e-hentai.org/tools/newtags*
 // @grant none
-// @version 20230809
+// @version 20230818
 // ==/UserScript==
 /*
 @licstart
@@ -22,11 +22,11 @@ as published by Sam Hocevar. See the COPYING file for more details.
 
 (function() {
   var script_uuid = "eh-guid-newtags";
-  var masterURL = "/tools.php?act=taggroup&mastertag=";
-  var nsURL = "/tools.php?act=tagns&searchtag=";
+  var masterURL = "/tools/taggroup?mastertag=";
+  var nsURL = "/tools/tagns?searchtag=";
 
   function addCheckNode(nodeSel, idRegex, urlArg) {
-    var baseToolsURL = "/tools.php?act=taglist&";
+    var baseToolsURL = "/tools/taglist?";
     var links = document.querySelectorAll(nodeSel);
     for (var i=0; i < links.length; i++) {
       var ugID = idRegex.exec(links[i]);
@@ -270,8 +270,13 @@ as published by Sam Hocevar. See the COPYING file for more details.
     nURL = window.location.href.replace("page=" + pageNum, nextPage);
     pURL = window.location.href.replace("page=" + pageNum, previousPage);
   } else {
-    nURL = window.location.href + "&" + nextPage;
-    pURL = window.location.href + "&" + previousPage;
+      if(window.location.href.includes('?')) {
+        nURL = window.location.href + "&" + nextPage;
+        pURL = window.location.href + "&" + previousPage;
+      } else {
+        nURL = window.location.href + "?" + nextPage;
+        pURL = window.location.href + "?" + previousPage;
+      }
   }
   next.setAttribute("href", nURL);
   previous.setAttribute("href", pURL);
