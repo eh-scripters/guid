@@ -3,7 +3,7 @@
 // @description Adds user tag check and tag group links to tools.php gid
 // @match https://repo.e-hentai.org/tools.php*gid=*
 // @match https://repo.e-hentai.org/tools/*gid=*
-// @match https://repo.e-hentai.org/tools/temptags*
+// @match https://repo.e-hentai.org/tools/tagapprove*
 // @grant none
 // @version 20230818
 // ==/UserScript==
