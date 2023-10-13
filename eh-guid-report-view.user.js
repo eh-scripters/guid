@@ -297,8 +297,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     for (var i = 0; i < reportTags.length; i++) {
       var tag = reportTags[i];
       var tagContent = tag.textContent.replaceAll(" ", "_");
-      tagContent = !tagContent.includes(":") ? "temp:" + tagContent : tagContent;
-      var id = "td_" + tagContent;
+      var id = "td_" + (!tagContent.includes(":") ? "temp:" + tagContent : tagContent);
       var elem = document.getElementById(id);
       if (!elem) {
         if(stateSh == "show") {
