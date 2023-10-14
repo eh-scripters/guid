@@ -296,8 +296,8 @@ find this file, see <http://www.gnu.org/licenses/>.
     reportTags = reorderReportTags(reportTags);
     for (var i = 0; i < reportTags.length; i++) {
       var tag = reportTags[i];
-      console.log(tag.textContent);
-      var id = "td_" + tag.textContent.replaceAll(" ", "_");
+      var tagContent = tag.textContent.replaceAll(" ", "_");
+      var id = "td_" + (!tagContent.includes(":") ? "temp:" + tagContent : tagContent);
       var elem = document.getElementById(id);
       if (!elem) {
         if(stateSh == "show") {
