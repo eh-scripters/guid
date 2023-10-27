@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.4.1
+// @version     0.4.2
 // @grant       none
 // ==/UserScript==
 /*
@@ -334,6 +334,7 @@ find this file, see <http://www.gnu.org/licenses/>.
               curNS = newNsTd;
           }
 
+          var tagId = tag.parentElement.previousElementSibling.textContent;
           var tagsTd = curNS.nextSibling;
           var tagDiv = document.createElement("div");
           tagDiv.setAttribute("id", id);
@@ -342,7 +343,7 @@ find this file, see <http://www.gnu.org/licenses/>.
           var tagNameA = document.createElement("a");
           tagNameA.innerText = tagText;
           tagNameA.href = "/tag/" + tag.textContent;
-          tagNameA.setAttribute("onclick","return toggle_tagmenu('" + tag.textContent +"', this)");
+          tagNameA.setAttribute("onclick","return toggle_tagmenu(" + tagId + ",'" + tag.textContent +"',this)");
           tagDiv.appendChild(tagNameA);
           tagsTd.appendChild(tagDiv);
           elem = tagDiv;
