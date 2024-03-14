@@ -275,19 +275,19 @@ find this file, see <http://www.gnu.org/licenses/>.
   }
 
   function reorderReportTags(tags) {
-    return Array.from(tags).sort((a, b) => {
-        const fixTemp = (tag) => (!tag.textContent.includes(":") ? "temp:" + tag.textContent : tag.textContent);
+      return Array.from(tags).sort((a, b) => {
+          const fixTemp = (tag) => (!tag.textContent.includes(":") ? "temp:" + tag.textContent : tag.textContent);
 
-        const aId = "td_" + fixTemp(a).replaceAll(" ", "_");
-        const bId = "td_" + fixTemp(b).replaceAll(" ", "_");
-        const aElem = document.getElementById(aId);
-        const bElem = document.getElementById(bId);
+          const aId = "td_" + fixTemp(a).replaceAll(" ", "_");
+          const bId = "td_" + fixTemp(b).replaceAll(" ", "_");
+          const aElem = document.getElementById(aId);
+          const bElem = document.getElementById(bId);
 
-        if(aElem && !bElem) return 1;
-        if(!aElem && bElem) return -1;
-        return 0;
-    });
-}
+          if(aElem && !bElem) return 1;
+          if(!aElem && bElem) return -1;
+          return 0;
+      });
+  }
 
   function enrichTags(dom, elems) {
     var reportTags = dom.querySelectorAll("a[href*='\/tag\/']");
