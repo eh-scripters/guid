@@ -364,7 +364,7 @@ find this file, see <http://www.gnu.org/licenses/>.
           const ad = document.getElementById("spa");
           const posTaglist = document.getElementById("taglist").getBoundingClientRect();
           const adHeight = ad ? ad.getBoundingClientRect().height : 0;
-          const y = myElem.getBoundingClientRect().y + 18 + adHeight - posTaglist.y;
+          const y = myElem.getBoundingClientRect().bottom + adHeight - posTaglist.y;
           myTool.style.top = `${y}px`;
           myTool.style.display = "block";
         }
