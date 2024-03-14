@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.4.2
+// @version     0.4.3
 // @grant       none
 // ==/UserScript==
 /*
@@ -275,21 +275,21 @@ find this file, see <http://www.gnu.org/licenses/>.
   }
 
   function reorderReportTags(tags) {
-      tags = Array.from(tags);
-      tags.sort(function(a,b) {
-          var aId = "td_" + a.textContent.replaceAll(" ", "_");
-          var bId = "td_" + b.textContent.replaceAll(" ", "_");
-          var aElem = document.getElementById(aId);
-          var bElem = document.getElementById(bId);
-          if(aElem && !bElem) return 1;
-          if(!aElem && bElem) return -1;
+    return Array.from(tags).sort((a, b) => {
+        const fixTemp = (tag) => (!tag.textContent.includes(":") ? "temp:" + tag.textContent : tag.textContent);
 
-          return 0;
-      });
-      return tags;
-  }
+        const aId = "td_" + fixTemp(a).replaceAll(" ", "_");
+        const bId = "td_" + fixTemp(b).replaceAll(" ", "_");
+        const aElem = document.getElementById(aId);
+        const bElem = document.getElementById(bId);
 
-  function enrichTags(dom, elems) {    
+        if(aElem && !bElem) return 1;
+        if(!aElem && bElem) return -1;
+        return 0;
+    });
+}
+
+  function enrichTags(dom, elems) {
     var reportTags = dom.querySelectorAll("a[href*='\/tag\/']");
     console.log("Enrich", reportTags.length, "tags");
     clearTooltips(elems);
@@ -340,6 +340,7 @@ find this file, see <http://www.gnu.org/licenses/>.
           tagDiv.setAttribute("id", id);
           tagDiv.className = "gt";
           tagDiv.style.borderColor = "red";
+          tagDiv.style.opacity = 0.5;
           var tagNameA = document.createElement("a");
           tagNameA.innerText = tagText;
           tagNameA.href = "/tag/" + tag.textContent;
