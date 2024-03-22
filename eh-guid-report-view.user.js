@@ -7,7 +7,7 @@
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
 // @version     0.4.3
-// @grant       none
+// @grant       GM_xmlhttpRequest
 // ==/UserScript==
 /*
 @usage
@@ -258,20 +258,31 @@ find this file, see <http://www.gnu.org/licenses/>.
     panel.appendChild(buttons);
     return { onoff: onoff, showhide: showhide };
   }
-
+  
   function voteList(uid, elems) {
     console.log("Found", elems.length, "tags for uid", uid);
-    var turl = taglistUrl + uid;
-    var req = new window.XMLHttpRequest();
-    req.addEventListener("load", function () {
-        console.log("Answer", req.status, req.responseType);
-        enrichTags(req.responseXML, elems);
+
+    const turl = taglistUrl + uid;
+
+    GM_xmlhttpRequest({
+      method: "GET",
+      url: turl,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      responseType: "document",
+      onload: function (response) {
+        if (response.status === 200) {
+          console.log("Answer", response.status, response.responseType);
+          enrichTags(response.responseXML, elems);
+        } else {
+          console.error(`Error ${response.status}: Failed fetching data from ${turl}`);
+        }
+      },
+      onerror: function (error) {
+        console.error('Error occurred while making XMLHTTPRequest:', error);
+      },
     });
-    req.open("GET", turl, true);
-    req.withCredentials = true;
-    // may not work on ancient browsers
-    req.responseType = "document";
-    req.send();
   }
 
   function reorderReportTags(tags) {
