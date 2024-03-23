@@ -393,7 +393,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     style += "color: black;";
     style += "opacity: 1.0;";
     style += "padding: 3px;";
-	style += "border: 1px solid;";
+    style += "border: 1px solid;";
     style += "border-radius: 6px;";
     style += "font-size: 1.2em;";
     style += "transform: translate(-5%);";
