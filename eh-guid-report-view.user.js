@@ -505,8 +505,8 @@ find this file, see <http://www.gnu.org/licenses/>.
         var userID = /showuser=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
         totalScore += score;
-		userList[i].style = null; // reset the style
-		userList[i].style.padding = "1px";
+        userList[i].style = null;
+        userList[i].style.padding = "1px";
         if (adminACL.indexOf(userID) > -1) {
           if (score > 0) {
             userList[i].style = adminUp;
