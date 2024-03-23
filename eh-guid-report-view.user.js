@@ -389,13 +389,14 @@ find this file, see <http://www.gnu.org/licenses/>.
     var posTaglist = taglist.getBoundingClientRect();
     var div = document.createElement("div");
     var style = "position: absolute;";
-    style += "background-color: snow;";
+    style += "background-color: #EDEBDF;";
     style += "color: black;";
-    style += "opacity: 0.9;";
+    style += "opacity: 1.0;";
     style += "padding: 3px;";
+    style += "border: 1px solid;";
     style += "border-radius: 6px;";
     style += "font-size: 1.2em;";
-    style += "transform: translate(-5%);";
+    style += "transform: translate(40%);";
     div.style = style;
     div.style.top = (pos.y - posTaglist.y + pos.height + adHeight) + "px";
     div.style.left = (pos.x - posTaglist.x) + "px";
@@ -406,6 +407,7 @@ find this file, see <http://www.gnu.org/licenses/>.
       a[i].style.color = "black";
     }
     div.appendChild(tip);
+    tip.style.width = "auto";
     div.className = "user-report-tooltip";
     div.appendChild(tip);
     taglist.appendChild(div);
@@ -503,6 +505,8 @@ find this file, see <http://www.gnu.org/licenses/>.
         var userID = /showuser=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
         totalScore = Math.min(totalScore += score, 200);
+        userList[i].style = null;
+        userList[i].style.padding = "1px";
         if (adminACL.indexOf(userID) > -1) {
           if (score > 0) {
             userList[i].style = adminUp;
@@ -519,7 +523,7 @@ find this file, see <http://www.gnu.org/licenses/>.
           }
         }
         if (userID == ownID) {
-          userList[i].style.border = "3px solid";
+          userList[i].style.border = "1px solid";
           if(score > 0) {
             votedUp = true;
           } else {
