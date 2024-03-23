@@ -396,7 +396,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     style += "border: 1px solid;";
     style += "border-radius: 6px;";
     style += "font-size: 1.2em;";
-    style += "transform: translate(-5%);";
+    style += "transform: translate(40%);";
     div.style = style;
     div.style.top = (pos.y - posTaglist.y + pos.height + adHeight) + "px";
     div.style.left = (pos.x - posTaglist.x) + "px";
