@@ -502,7 +502,7 @@ find this file, see <http://www.gnu.org/licenses/>.
         var href = userList[i].firstChild.href;
         var userID = /showuser=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
-        totalScore += score;
+        totalScore = Math.min(totalScore += score, 200);
         if (adminACL.indexOf(userID) > -1) {
           if (score > 0) {
             userList[i].style = adminUp;
