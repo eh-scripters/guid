@@ -407,7 +407,7 @@ find this file, see <http://www.gnu.org/licenses/>.
       a[i].style.color = "black";
     }
     div.appendChild(tip);
-	tip.style.width = "auto";
+    tip.style.width = "auto";
     div.className = "user-report-tooltip";
     div.appendChild(tip);
     taglist.appendChild(div);
