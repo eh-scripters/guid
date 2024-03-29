@@ -5,7 +5,7 @@
 // @match https://repo.e-hentai.org/tools/*gid=*
 // @match https://repo.e-hentai.org/tools/tagapprove*
 // @grant none
-// @version 20230818
+// @version 20240329
 // ==/UserScript==
 /*
 @licstart
@@ -134,7 +134,9 @@ as published by Sam Hocevar. See the COPYING file for more details.
   var tagHeader = [];
   var tagLists = [];
   for (var i=0; i < tables.length; i+=3) {
+    var tableCount = tables[i].parentElement.querySelectorAll("table").length;
     tagHeader.push(tables[i]);
+    if (tableCount == 2) i--;
     tagLists.push(tables[i+2]);
   }
 
