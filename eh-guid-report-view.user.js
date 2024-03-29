@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.4.4
+// @version     0.5.0
 // @grant       none
 // ==/UserScript==
 /*
@@ -355,7 +355,7 @@ find this file, see <http://www.gnu.org/licenses/>.
       }
       var tagTop = tag.parentNode.parentNode.parentNode.parentNode;
       var tip = tagTop.nextElementSibling.children[1];
-      var tool = tipBelow(elem, tip);
+      var tool = tipBelow(elem, tip, tagTop);
       // closures - i hate JS scopes
       elem.onmouseover = (function() {
         const myTool = tool;
@@ -378,7 +378,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     }
   }
 
-  function tipBelow(el, tip) {
+  function tipBelow(el, tip, top) {
     var pos = el.getBoundingClientRect();
     var taglist = document.getElementById("taglist");
     var ad = document.getElementById("spa");
@@ -413,7 +413,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     taglist.appendChild(div);
     if(addStyle) {
       var table = div.getElementsByTagName("table");
-      addStyle(table[0], el);
+      addStyle(table[0], el, top);
     }
     return div;
   }
@@ -489,22 +489,22 @@ find this file, see <http://www.gnu.org/licenses/>.
                 , "301767"    // varst
   ];
 
-    function addStyle(table, el) {
+    function addStyle(table, el, top) {
       var adminUp = "background-color:gold; color:green; font-weight:bold;";
       var adminDown = "background-color:gold; color:red; font-weight:bold;";
       var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
       var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
       var scoreList = table.querySelectorAll("td:nth-of-type(1)");
       var userList = table.querySelectorAll("td:nth-of-type(2)");
-      var totalScore = 0;
-      var totalVeto = 0;
+      var voteData = top.querySelectorAll("td")[0].textContent.match(/(\+?\d+)\s\/\s([-+]?\d+)/);
+      var totalScore = voteData !== null ? +voteData[1] : 0;
+      var totalVeto = voteData !== null ? +voteData[2] : 0;
       var votedUp = false;
       var votedDown = false;
       for (var i=0; i < scoreList.length; i++) {
         var href = userList[i].firstChild.href;
         var userID = /showuser=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
-        totalScore = Math.min(totalScore += score, 200);
         userList[i].style = null;
         userList[i].style.padding = "1px";
         if (adminACL.indexOf(userID) > -1) {
@@ -512,13 +512,11 @@ find this file, see <http://www.gnu.org/licenses/>.
             userList[i].style = adminUp;
           } else {
             userList[i].style = adminDown;
-            totalVeto = 3;
           }
         } else if (vetoACL.indexOf(userID) > -1) {
           if (score > 0) {
             userList[i].style = vetoUp;
           } else {
-            totalVeto++;
             userList[i].style = vetoDown;
           }
         }
@@ -531,29 +529,48 @@ find this file, see <http://www.gnu.org/licenses/>.
           }
         }
       }
-      var row = table.getElementsByTagName("tbody")[0].insertRow();
-      row.style = "";
-      if(totalScore > 0) {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-top: 2px solid black;">+' + totalScore + '</td>';
-      } else if(totalScore == 0) {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-top: 2px solid black;">&nbsp;' + totalScore + '</td>';
-      } else {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-top: 2px solid black;">' + totalScore + '</td>';
-      }
-      if(el.style.borderColor === "red") {
-        if(votedUp) {
-            el.firstChild.className = "tup";
-        } else if(votedDown) {
-            el.firstChild.className = "tdn";
-        }
-        if(totalVeto >= 3) {
-        } else if(totalVeto >= 1) {
-            el.className = "gtl";
-        } else {
-            el.className = "gtw";
-        }
+
+      if (table.getElementsByTagName("tbody").length == 0){
+        return;
       }
 
+      var row = table.getElementsByTagName("tbody")[0].insertRow(0);
+      row.style = "";
+
+      if (totalScore > 0) {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-bottom: 2px solid black;">+' + totalScore + '</td>';
+      } else if (totalScore == 0) {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-bottom: 2px solid black;">&nbsp;' + totalScore + '</td>';
+      } else {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-bottom: 2px solid black;">' + totalScore + '</td>';
+      }
+
+      if (totalVeto > 0) {
+        row.innerHTML += '<td style="font-weight:bold;color:green;border-bottom:2px solid transparent">(+' + totalVeto + ')</td>';
+
+        if (totalVeto >= 3) {
+          el.style.borderColor = 'green';
+        }
+      } else if (totalVeto == 0) {
+        row.innerHTML += '<td style="font-weight:bold;color:black;border-bottom:2px solid transparent">(0)</td>';
+      } else {
+        row.innerHTML += '<td style="font-weight:bold;color:red;border-bottom:2px solid transparent">(' + totalVeto + ')</td>';
+      }
+
+      if (el.style.borderColor === "red") {
+        if (votedUp) {
+          el.firstChild.className = "tup";
+        } else if (votedDown) {
+          el.firstChild.className = "tdn";
+        }
+
+        if (totalVeto <= -3) {
+        } else if (totalVeto < 0) {
+          el.className = "gtl";
+        } else {
+          el.className = "gtw";
+        }
+      }
     };
 
   function getCookie(name) {
