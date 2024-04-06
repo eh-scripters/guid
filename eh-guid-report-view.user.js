@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.0
+// @version     0.5.1
 // @grant       none
 // ==/UserScript==
 /*
@@ -259,9 +259,9 @@ find this file, see <http://www.gnu.org/licenses/>.
     return { onoff: onoff, showhide: showhide };
   }
 
-  function voteList(uid, elems) {
-    console.log("Found", elems.length, "tags for uid", uid);
-    var turl = taglistUrl + uid;
+  function voteList(gid, elems) {
+    console.log("Found", elems.length, "tags for gid", gid);
+    var turl = taglistUrl + gid;
     var req = new window.XMLHttpRequest();
     req.addEventListener("load", function () {
         console.log("Answer", req.status, req.responseType);
@@ -530,12 +530,22 @@ find this file, see <http://www.gnu.org/licenses/>.
         }
       }
 
-      if (table.getElementsByTagName("tbody").length == 0){
-        return;
+      if (table.getElementsByTagName("tbody").length == 0) {
+        if (voteData === null) {
+          return;
+        }
+
+        // the tag was likely added by Autotagger, votes are not visible in tools
+        const tbody = document.createElement("tbody");
+        const autoVote = document.createElement("tr");
+
+        autoVote.innerHTML = `<td style="width:30px;font-weight:bold;color:green">+${totalScore}</td><td style="padding: 1px;"><i>Autotagger</i></td><td style="width:150px"></td>`;
+
+        tbody.appendChild(autoVote);
+        table.appendChild(tbody);
       }
 
       var row = table.getElementsByTagName("tbody")[0].insertRow(0);
-      row.style = "";
 
       if (totalScore > 0) {
         row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-bottom: 2px solid black;">+' + totalScore + '</td>';
