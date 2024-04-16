@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.2
+// @version     0.5.3
 // @grant       none
 // ==/UserScript==
 /*
@@ -449,49 +449,8 @@ find this file, see <http://www.gnu.org/licenses/>.
   addWatcher();
 
   var ownID = getCookie('ipb_member_id');
-  var adminACL = [ "6"        // Tenboro
-                 , "25692"    // Angel
-  ];
-  var vetoACL = [ "4850902"   // Agoraphobia
-                , "90092"     // Alpha 7
-                , "2884"      // Beryl
-                , "243587"    // Binglo
-                , "924439"    // blue penguin
-                , "631161"    // chaos-x
-                , "1207129"   // Cipher-kun
-                , "16353"     // Dammon
-                , "409722"    // danixxx
-                , "2115725"   // Deulkkae
-                , "882044"    // DGze
-                , "1908893"   // Dnkz
-                , "2790"      // elgringo
-                , "159384"    // etothex
-                , "1028280"   // freudia
-                , "971620"    // kitsuneH
-                , "43883"     // Luna_Flina
-                , "589675"    // Maximum_Joe
-                , "204246"    // meow_pao
-                , "317696"    // Miles Edgeworth
-                , "1898816"   // Mrsuperhappy
-                , "248946"    // MSimm1
-                , "3169265"   // nasu
-                , "68896"     // NoNameNoBlame
-                , "106471"    // nonotan
-                , "241107"    // ohmightycat
-                , "892479"    // peterson123
-                , "154972"    // pop9
-                , "2610932"   // Rinnosuke M.
-                , "989173"    // Shank
-                , "2203"      // Spectre
-                , "1647739"   // Superlatanium
-                , "976341"    // svines85
-                , "582527"    // TheGreyPanther
-                , "301767"    // varst
-  ];
 
     function addStyle(table, el, top) {
-      var adminUp = "background-color:gold; color:green; font-weight:bold;";
-      var adminDown = "background-color:gold; color:red; font-weight:bold;";
       var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
       var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
       var scoreList = table.querySelectorAll("td:nth-of-type(1)");
@@ -501,28 +460,25 @@ find this file, see <http://www.gnu.org/licenses/>.
       var totalVeto = voteData !== null ? +voteData[2] : 0;
       var votedUp = false;
       var votedDown = false;
-      for (var i=0; i < scoreList.length; i++) {
+      for (var i = 0; i < scoreList.length; i++) {
         var href = userList[i].firstChild.href;
         var userID = /uid=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
+        var voteColor = userList[i].style.color;
+        
         userList[i].style = null;
         userList[i].style.padding = "1px";
-        if (adminACL.indexOf(userID) > -1) {
-          if (score > 0) {
-            userList[i].style = adminUp;
-          } else {
-            userList[i].style = adminDown;
-          }
-        } else if (vetoACL.indexOf(userID) > -1) {
-          if (score > 0) {
-            userList[i].style = vetoUp;
-          } else {
-            userList[i].style = vetoDown;
-          }
+
+        if (voteColor == 'rgb(255, 57, 57)') {
+          userList[i].style = vetoDown;
+        } else if (voteColor == 'rgb(0, 155, 0)') {
+          userList[i].style = vetoUp;
         }
+
         if (userID == ownID) {
           userList[i].style.border = "1px solid";
-          if(score > 0) {
+
+          if (score > 0) {
             votedUp = true;
           } else {
             votedDown = true;
