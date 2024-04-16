@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.3
+// @version     0.5.4
 // @grant       none
 // ==/UserScript==
 /*
@@ -465,6 +465,7 @@ find this file, see <http://www.gnu.org/licenses/>.
         var userID = /uid=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
         var voteColor = userList[i].style.color;
+        var starter = userList[i].style.fontStyle === 'italic';
         
         userList[i].style = null;
         userList[i].style.padding = "1px";
@@ -483,6 +484,10 @@ find this file, see <http://www.gnu.org/licenses/>.
           } else {
             votedDown = true;
           }
+        }
+
+        if (starter) {
+          userList[i].style.fontStyle = 'italic';
         }
       }
 
