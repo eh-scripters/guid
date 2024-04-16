@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.1
+// @version     0.5.2
 // @grant       none
 // ==/UserScript==
 /*
@@ -503,7 +503,7 @@ find this file, see <http://www.gnu.org/licenses/>.
       var votedDown = false;
       for (var i=0; i < scoreList.length; i++) {
         var href = userList[i].firstChild.href;
-        var userID = /showuser=(\w+)/.exec(href)[1];
+        var userID = /uid=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
         userList[i].style = null;
         userList[i].style.padding = "1px";
