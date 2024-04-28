@@ -5,7 +5,7 @@
 // @match https://repo.e-hentai.org/tools/*gid=*
 // @match https://repo.e-hentai.org/tools/tagapprove*
 // @grant none
-// @version 20240329
+// @version 20240428
 // ==/UserScript==
 /*
 @licstart
@@ -22,46 +22,7 @@ as published by Sam Hocevar. See the COPYING file for more details.
 "use strict;";
 
 (function() {
-  var ownID = getCookie('ipb_member_id'); // (boobies) Replace this with your own user ID
-  var adminACL = [ "6"        // Tenboro
-                 , "25692"    // Angel
-  ];
-  var vetoACL = [ "4850902"   // Agoraphobia
-                , "90092"     // Alpha 7
-                , "2884"      // Beryl
-                , "243587"    // Binglo
-                , "924439"    // blue penguin
-                , "631161"    // chaos-x
-                , "1207129"   // Cipher-kun
-                , "16353"     // Dammon
-                , "409722"    // danixxx
-                , "2115725"   // Deulkkae
-                , "882044"    // DGze
-                , "1908893"   // Dnkz
-                , "2790"      // elgringo
-                , "159384"    // etothex
-                , "1028280"   // freudia
-                , "971620"    // kitsuneH
-                , "43883"     // Luna_Flina
-                , "589675"    // Maximum_Joe
-                , "204246"    // meow_pao
-                , "317696"    // Miles Edgeworth
-                , "1898816"   // Mrsuperhappy
-                , "248946"    // MSimm1
-                , "3169265"   // nasu
-                , "68896"     // NoNameNoBlame
-                , "106471"    // nonotan
-                , "241107"    // ohmightycat
-                , "892479"    // peterson123
-                , "154972"    // pop9
-                , "2610932"   // Rinnosuke M.
-                , "989173"    // Shank
-                , "2203"      // Spectre
-                , "1647739"   // Superlatanium
-                , "976341"    // svines85
-                , "582527"    // TheGreyPanther
-                , "301767"    // varst
-  ];
+  var ownID = getCookie('ipb_member_id');
   var masterURL = "/tools/taggroup?mastertag=";
 
   function addCheckNode(linkNode) {
@@ -84,8 +45,6 @@ as published by Sam Hocevar. See the COPYING file for more details.
     if(table === undefined) {
         return;
     }
-    var adminUp = "background-color:gold; color:green; font-weight:bold;";
-    var adminDown = "background-color:gold; color:red; font-weight:bold;";
     var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
     var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
     var scoreList = table.querySelectorAll("td:nth-of-type(1)");
@@ -95,17 +54,12 @@ as published by Sam Hocevar. See the COPYING file for more details.
       href = userList[i].firstChild.href;
       userID = /uid=(\w+)/.exec(href)[1];
       var score = parseInt(scoreList[i].textContent);
+      var voteColor = userList[i].style.color;
 
-      if (adminACL.indexOf(userID) > -1) {
-        if (score > 0)
-          userList[i].style = adminUp;
-        else
-          userList[i].style = adminDown;
-      } else if (vetoACL.indexOf(userID) > -1) {
-        if (score > 0)
-          userList[i].style = vetoUp;
-        else
-          userList[i].style = vetoDown;
+      if (voteColor == 'rgb(255, 57, 57)') {
+        userList[i].style = vetoDown;
+      } else if (voteColor == 'rgb(0, 155, 0)') {
+        userList[i].style = vetoUp;
       }
 
       if (userID == ownID)
