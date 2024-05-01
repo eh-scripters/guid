@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.4
+// @version     0.5.5
 // @grant       none
 // ==/UserScript==
 /*
@@ -364,8 +364,10 @@ find this file, see <http://www.gnu.org/licenses/>.
           const ad = document.getElementById("spa");
           const posTaglist = document.getElementById("taglist").getBoundingClientRect();
           const adHeight = ad ? ad.getBoundingClientRect().height : 0;
+          const x = myElem.getBoundingClientRect().left - posTaglist.x;
           const y = myElem.getBoundingClientRect().bottom + adHeight - posTaglist.y;
           myTool.style.top = `${y}px`;
+          myTool.style.left = `${x}px`;
           myTool.style.display = "block";
         }
       })();
