@@ -5,7 +5,7 @@
 // @match https://repo.e-hentai.org/tools/*gid=*
 // @match https://repo.e-hentai.org/tools/tagapprove*
 // @grant none
-// @version 20240512
+// @version 20240512-1
 // ==/UserScript==
 /*
 @licstart
@@ -25,6 +25,22 @@ as published by Sam Hocevar. See the COPYING file for more details.
   const ownID = getCookie('ipb_member_id');
   const masterURL = '/tools/taggroup?mastertag=';
   const nsURL = '/tools/tagns?searchtag=';
+
+  function addCheckNode(linkNode) {
+    const baseToolsURL = '/tools/taglist?';
+    let userID = /showuser=(\w+)/.exec(linkNode);
+    if (!userID)  // just in case, sometimes it is needed
+      return;
+
+    userID = userID[1];
+    const checkNode = document.createElement('a');
+    checkNode.setAttribute('target', '_blank');
+    const checkText = document.createTextNode('✔');
+    checkNode.style = 'padding-right:5px;';
+    checkNode.appendChild(checkText);
+    checkNode.setAttribute('href', baseToolsURL + 'uid=' + userID);
+    linkNode.parentNode.insertBefore(checkNode, linkNode);
+  }
 
   function addStyle(header, table) {
     if (table === undefined) {
@@ -75,6 +91,11 @@ as published by Sam Hocevar. See the COPYING file for more details.
     tagName.appendChild(scoreText);
     tagName.insertBefore(groupLink, tagName.firstChild);
     tagName.insertBefore(nsLink, tagName.firstChild);
+  }
+
+  const links = document.querySelectorAll('a[href*="showuser"]');
+  for (let i = 0; i < links.length; i++) {
+    addCheckNode(links[i]);
   }
 
   const tables = document.querySelectorAll('table:nth-of-type(1)');
