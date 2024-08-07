@@ -12,6 +12,7 @@
  * 'Search Dead Tags' will only display the users dead tags (upvoted by them and killed by someone else)
  * Clicking the Clipboard icon will copy the links to your clipboard
  * Clicking on the tag state (donvoted, started, etc.) will show/hide the gallery links in a scrollbox
+ * If you see a tag named 'S' or 'B' they are slaves and deleted temp tags respectively, they are not counted in the totals summary
 */
 
 'use strict';
@@ -187,11 +188,13 @@ const display_results = () => {
       upvoted: 0
    };
 
-   for (const [_, value] of sorted_tags) {
-      totals.dead += value.dead.length;
-      totals.downvoted += value.downvoted.length;
-      totals.started += value.started.length;
-      totals.upvoted += value.upvoted.length;
+   for (const [tag, value] of sorted_tags) {
+      if (tag.length !== 1) { // skip slaves and deleted temps in total summary
+         totals.dead += value.dead.length;
+         totals.downvoted += value.downvoted.length;
+         totals.started += value.started.length;
+         totals.upvoted += value.upvoted.length;
+      }
    }
 
    const tag_cards = sorted_tags.map(([tag, value]) => `
