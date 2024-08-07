@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.4.3
+// @version     0.5.5
 // @grant       none
 // ==/UserScript==
 /*
@@ -259,9 +259,9 @@ find this file, see <http://www.gnu.org/licenses/>.
     return { onoff: onoff, showhide: showhide };
   }
 
-  function voteList(uid, elems) {
-    console.log("Found", elems.length, "tags for uid", uid);
-    var turl = taglistUrl + uid;
+  function voteList(gid, elems) {
+    console.log("Found", elems.length, "tags for gid", gid);
+    var turl = taglistUrl + gid;
     var req = new window.XMLHttpRequest();
     req.addEventListener("load", function () {
         console.log("Answer", req.status, req.responseType);
@@ -355,7 +355,7 @@ find this file, see <http://www.gnu.org/licenses/>.
       }
       var tagTop = tag.parentNode.parentNode.parentNode.parentNode;
       var tip = tagTop.nextElementSibling.children[1];
-      var tool = tipBelow(elem, tip);
+      var tool = tipBelow(elem, tip, tagTop);
       // closures - i hate JS scopes
       elem.onmouseover = (function() {
         const myTool = tool;
@@ -364,8 +364,10 @@ find this file, see <http://www.gnu.org/licenses/>.
           const ad = document.getElementById("spa");
           const posTaglist = document.getElementById("taglist").getBoundingClientRect();
           const adHeight = ad ? ad.getBoundingClientRect().height : 0;
+          const x = myElem.getBoundingClientRect().left - posTaglist.x;
           const y = myElem.getBoundingClientRect().bottom + adHeight - posTaglist.y;
           myTool.style.top = `${y}px`;
+          myTool.style.left = `${x}px`;
           myTool.style.display = "block";
         }
       })();
@@ -378,7 +380,7 @@ find this file, see <http://www.gnu.org/licenses/>.
     }
   }
 
-  function tipBelow(el, tip) {
+  function tipBelow(el, tip, top) {
     var pos = el.getBoundingClientRect();
     var taglist = document.getElementById("taglist");
     var ad = document.getElementById("spa");
@@ -389,13 +391,14 @@ find this file, see <http://www.gnu.org/licenses/>.
     var posTaglist = taglist.getBoundingClientRect();
     var div = document.createElement("div");
     var style = "position: absolute;";
-    style += "background-color: snow;";
+    style += "background-color: #EDEBDF;";
     style += "color: black;";
-    style += "opacity: 0.9;";
+    style += "opacity: 1.0;";
     style += "padding: 3px;";
+    style += "border: 1px solid;";
     style += "border-radius: 6px;";
     style += "font-size: 1.2em;";
-    style += "transform: translate(-5%);";
+    style += "transform: translate(40%);";
     div.style = style;
     div.style.top = (pos.y - posTaglist.y + pos.height + adHeight) + "px";
     div.style.left = (pos.x - posTaglist.x) + "px";
@@ -406,12 +409,13 @@ find this file, see <http://www.gnu.org/licenses/>.
       a[i].style.color = "black";
     }
     div.appendChild(tip);
+    tip.style.width = "auto";
     div.className = "user-report-tooltip";
     div.appendChild(tip);
     taglist.appendChild(div);
     if(addStyle) {
       var table = div.getElementsByTagName("table");
-      addStyle(table[0], el);
+      addStyle(table[0], el, top);
     }
     return div;
   }
@@ -447,109 +451,99 @@ find this file, see <http://www.gnu.org/licenses/>.
   addWatcher();
 
   var ownID = getCookie('ipb_member_id');
-  var adminACL = [ "6"        // Tenboro
-                 , "25692"    // Angel
-  ];
-  var vetoACL = [ "4850902"   // Agoraphobia
-                , "90092"     // Alpha 7
-                , "2884"      // Beryl
-                , "243587"    // Binglo
-                , "924439"    // blue penguin
-                , "631161"    // chaos-x
-                , "1207129"   // Cipher-kun
-                , "16353"     // Dammon
-                , "409722"    // danixxx
-                , "2115725"   // Deulkkae
-                , "882044"    // DGze
-                , "1908893"   // Dnkz
-                , "2790"      // elgringo
-                , "159384"    // etothex
-                , "1028280"   // freudia
-                , "971620"    // kitsuneH
-                , "43883"     // Luna_Flina
-                , "589675"    // Maximum_Joe
-                , "204246"    // meow_pao
-                , "317696"    // Miles Edgeworth
-                , "1898816"   // Mrsuperhappy
-                , "248946"    // MSimm1
-                , "3169265"   // nasu
-                , "68896"     // NoNameNoBlame
-                , "106471"    // nonotan
-                , "241107"    // ohmightycat
-                , "892479"    // peterson123
-                , "154972"    // pop9
-                , "2610932"   // Rinnosuke M.
-                , "989173"    // Shank
-                , "2203"      // Spectre
-                , "1647739"   // Superlatanium
-                , "976341"    // svines85
-                , "582527"    // TheGreyPanther
-                , "301767"    // varst
-  ];
 
-    function addStyle(table, el) {
-      var adminUp = "background-color:gold; color:green; font-weight:bold;";
-      var adminDown = "background-color:gold; color:red; font-weight:bold;";
+    function addStyle(table, el, top) {
       var vetoUp = "background-color:lightgreen; color:green; font-weight:bold;";
       var vetoDown = "background-color:lightpink; color:red; font-weight:bold;";
       var scoreList = table.querySelectorAll("td:nth-of-type(1)");
       var userList = table.querySelectorAll("td:nth-of-type(2)");
-      var totalScore = 0;
-      var totalVeto = 0;
+      var voteData = top.querySelectorAll("td")[0].textContent.match(/(\+?\d+)\s\/\s([-+]?\d+)/);
+      var totalScore = voteData !== null ? +voteData[1] : 0;
+      var totalVeto = voteData !== null ? +voteData[2] : 0;
       var votedUp = false;
       var votedDown = false;
-      for (var i=0; i < scoreList.length; i++) {
+      for (var i = 0; i < scoreList.length; i++) {
         var href = userList[i].firstChild.href;
-        var userID = /showuser=(\w+)/.exec(href)[1];
+        var userID = /uid=(\w+)/.exec(href)[1];
         var score = parseInt(scoreList[i].textContent);
-        totalScore += score;
-        if (adminACL.indexOf(userID) > -1) {
-          if (score > 0) {
-            userList[i].style = adminUp;
-          } else {
-            userList[i].style = adminDown;
-            totalVeto = 3;
-          }
-        } else if (vetoACL.indexOf(userID) > -1) {
-          if (score > 0) {
-            userList[i].style = vetoUp;
-          } else {
-            totalVeto++;
-            userList[i].style = vetoDown;
-          }
+        var voteColor = userList[i].style.color;
+        var starter = userList[i].style.fontStyle === 'italic';
+        
+        userList[i].style = null;
+        userList[i].style.padding = "1px";
+
+        if (voteColor == 'rgb(255, 57, 57)') {
+          userList[i].style = vetoDown;
+        } else if (voteColor == 'rgb(0, 155, 0)') {
+          userList[i].style = vetoUp;
         }
+
         if (userID == ownID) {
-          userList[i].style.border = "3px solid";
-          if(score > 0) {
+          userList[i].style.border = "1px solid";
+
+          if (score > 0) {
             votedUp = true;
           } else {
             votedDown = true;
           }
         }
-      }
-      var row = table.getElementsByTagName("tbody")[0].insertRow();
-      row.style = "";
-      if(totalScore > 0) {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-top: 2px solid black;">+' + totalScore + '</td>';
-      } else if(totalScore == 0) {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-top: 2px solid black;">&nbsp;' + totalScore + '</td>';
-      } else {
-          row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-top: 2px solid black;">' + totalScore + '</td>';
-      }
-      if(el.style.borderColor === "red") {
-        if(votedUp) {
-            el.firstChild.className = "tup";
-        } else if(votedDown) {
-            el.firstChild.className = "tdn";
-        }
-        if(totalVeto >= 3) {
-        } else if(totalVeto >= 1) {
-            el.className = "gtl";
-        } else {
-            el.className = "gtw";
+
+        if (starter) {
+          userList[i].style.fontStyle = 'italic';
         }
       }
 
+      if (table.getElementsByTagName("tbody").length == 0) {
+        if (voteData === null) {
+          return;
+        }
+
+        // the tag was likely added by Autotagger, votes are not visible in tools
+        const tbody = document.createElement("tbody");
+        const autoVote = document.createElement("tr");
+
+        autoVote.innerHTML = `<td style="width:30px;font-weight:bold;color:green">+${totalScore}</td><td style="padding: 1px;"><i>Autotagger</i></td><td style="width:150px"></td>`;
+
+        tbody.appendChild(autoVote);
+        table.appendChild(tbody);
+      }
+
+      var row = table.getElementsByTagName("tbody")[0].insertRow(0);
+
+      if (totalScore > 0) {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:green;border-bottom: 2px solid black;">+' + totalScore + '</td>';
+      } else if (totalScore == 0) {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:black;border-bottom: 2px solid black;">&nbsp;' + totalScore + '</td>';
+      } else {
+        row.innerHTML = '<td style="width:30px; font-weight:bold; color:red;border-bottom: 2px solid black;">' + totalScore + '</td>';
+      }
+
+      if (totalVeto > 0) {
+        row.innerHTML += '<td style="font-weight:bold;color:green;border-bottom:2px solid transparent">(+' + totalVeto + ')</td>';
+
+        if (totalVeto >= 3) {
+          el.style.borderColor = 'green';
+        }
+      } else if (totalVeto == 0) {
+        row.innerHTML += '<td style="font-weight:bold;color:black;border-bottom:2px solid transparent">(0)</td>';
+      } else {
+        row.innerHTML += '<td style="font-weight:bold;color:red;border-bottom:2px solid transparent">(' + totalVeto + ')</td>';
+      }
+
+      if (el.style.borderColor === "red") {
+        if (votedUp) {
+          el.firstChild.className = "tup";
+        } else if (votedDown) {
+          el.firstChild.className = "tdn";
+        }
+
+        if (totalVeto <= -3) {
+        } else if (totalVeto < 0) {
+          el.className = "gtl";
+        } else {
+          el.className = "gtw";
+        }
+      }
     };
 
   function getCookie(name) {
