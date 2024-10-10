@@ -117,7 +117,10 @@
 
             const clean_tag_url = tag_link.href.replace('?skip_mastertags=1', ''); // remove ?skip_mastertags=1 from the tag url, i think this was necessary for the href when appending dead tags to work
             const current_domain = window.location.hostname;
-            const tag_url = clean_tag_url.replace('e-hentai.org', current_domain); // replace e-hentai with the current domain if applicable
+            let tag_url = clean_tag_url.replace('e-hentai.org', current_domain); // replace e-hentai with the current domain if applicable
+            if (namespace === 'temp' && !tag_url.includes(`${namespace}:`)) { // fix the tag_url for temp tags
+                tag_url = tag_url.replace('/tag/', `/tag/${namespace}:`);
+            }
 
             const is_slave = !!tag_row.querySelector('td:first-child a[href*="taggroup?mastertag"]'); // if the tag has a taggroup link, it's a slave tag
             const is_blocked = !!tag_row.querySelector('td:first-child a[href*="tagns?searchtag"]'); // if the tag has a tagns , it's a blocked tag
@@ -175,55 +178,6 @@
         return table;
     };
 
-    const update_tooltip_content = (tag_data, all_tags) => {
-        const fragment = document.createDocumentFragment();
-
-        const score_color = tag_data.score > 0 ? 'green' : 'black'; // if score is positive, color green, otherwise black
-        const score_text = tag_data.score > 0 ? `+${tag_data.score}` : `${tag_data.score}`; // if score is positive, add a + to the score, otherwise don't
-        const veto_color = tag_data.vetoes > 0 ? 'green' : tag_data.vetoes < 0 ? 'red' : 'black'; // if vetoes is positive, color green, if negative color red, otherwise black
-
-        if (!isNaN(tag_data.score)) { // if the score is not NaN, add the score and vetoes to the tooltip (blocked and slave tags don't have scores so we can ignore them)
-            const score_container = document.createElement('div'); // this is the div that contains the total score and total vetoes
-            score_container.className = 'score_container';
-            score_container.innerHTML = `
-                <span class="score" style="color: ${score_color};">${score_text}</span>
-                <span class="vetoes" style="color: ${veto_color};">(${tag_data.vetoes})</span>
-                <hr class="divider">
-            `;
-            fragment.appendChild(score_container);
-        }
-
-        if (tag_data.is_blocked) { // if the tag is blocked append a div saying its blocked
-            const blocked_info = document.createElement('div');
-            blocked_info.className = 'slave_tag_info';
-            blocked_info.textContent = `Blocked tag`;
-            fragment.appendChild(blocked_info);
-        }
-
-        if (tag_data.is_slave && tag_data.master_tag) { // if the tag is a slave tag and it has a master tag, add a div with the master tag info
-            const slave_info = document.createElement('div');
-            slave_info.className = 'slave_tag_info';
-            slave_info.textContent = `Slave of ${tag_data.master_tag}`;
-            fragment.appendChild(slave_info);
-        }
-
-        fragment.appendChild(create_vote_table(tag_data.user_votes));
-
-        if (!tag_data.is_slave) { // if the tag is not a slave tag, add a div with the slave tags info
-            const slave_tags = all_tags.filter(t => t.master_tag === `${tag_data.namespace}:${tag_data.tag_name}`); // get all the slave tags for the master tag
-            for (const slave of slave_tags) { // for each slave tag, add a div with the slave tag info
-                const slave_info = document.createElement('div');
-                slave_info.className = 'slave_tag_info';
-                slave_info.textContent = `Slave tag: ${slave.tag_name}`;
-                fragment.appendChild(slave_info);
-                fragment.appendChild(create_vote_table(slave.user_votes)); // add the vote table for the slave tag
-            }
-        }
-
-        tooltip.innerHTML = '';
-        tooltip.appendChild(fragment);
-    };
-
     const append_dead_tags = (tags) => {
         const gallery_taglist = document.getElementById('taglist');
         const tbody = gallery_taglist.querySelector('tbody');
@@ -247,9 +201,8 @@
                 } else if (tag.vetoes <= -1) { // if at least 1 negative veto sc
                     existing_tag_div.style.borderColor = "red";
                 }
-              continue; // if the tag exists in the taglist, we don't want to append it
+              continue; // if the tag already exists in the taglist, we don't want to append it
             }
-            //if (tag.score !== 0 && !isNaN(tag.score)) continue; // if the score is not 0 and it's not a number, skip it (means it's not a currently visible tag in the gallery taglist)
 
             let namespace_row = null;
             let tags_td = null;
@@ -297,6 +250,13 @@
     const add_tooltips_to_tags = (tags) => {
         const tag_map = new Map(tags.map(tag => [tag.tag_url, tag]));
         const taglist = gallery_taglist;
+        const tooltip_contents = new Map();
+
+        // Pre-generate tooltip content for each tag and cache it in the tooltip_contents map (updates when update_tags is called)
+        for (const tag of tags) {
+            const content = create_tooltip_content(tag, tags);
+            tooltip_contents.set(tag.tag_url, content);
+        }
 
         taglist.addEventListener('mouseenter', (event) => { // when the mouse hovers over a tag
             const tag_element = event.target.closest('a'); // get the element of the tag we are hovering over
@@ -305,19 +265,78 @@
             const tag_data = tag_map.get(tag_element.href); // get the taglist data for the tag we are hovering over
             if (!tag_data) return;
 
-            update_tooltip_content(tag_data, tags); // update the tooltip content with the tag data
+            const fragment = tooltip_contents.get(tag_element.href); // get the cached tooltip content for the tag we are hovering over
+            if (!fragment) return;
+
+            tooltip.innerHTML = ''; // clear the tooltip
+            tooltip.appendChild(fragment.cloneNode(true)); // append the cached tooltip content to the tooltip
 
             const rect = tag_element.getBoundingClientRect(); // get the bounding rectangle of the tag we are hovering over
             tooltip.style.left = `${rect.left + window.scrollX}px`;
             tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
-            tooltip.style.display = 'block';
+            tooltip.style.display = 'block'; // display the tooltip
         }, true);
 
         taglist.addEventListener('mouseleave', (event) => {
             if (event.target.closest('a')) {
-                tooltip.style.display = 'none';
+                tooltip.style.display = 'none'; // hide the tooltip
             }
         }, true);
+    };
+
+    const create_tooltip_content = (tag_data, all_tags) => {
+        const fragment = document.createDocumentFragment();
+        if (!isNaN(tag_data.score)) { // if the score is not NaN, add the score and vetoes to the tooltip (blocked and slave tags don't have scores so we can ignore them)
+            const score_container = document.createElement('div'); // this is the div that contains the total score and total vetoes
+            score_container.className = 'score_container';
+
+            const score_span = document.createElement('span');
+            score_span.className = 'score';
+            score_span.style.color = tag_data.score > 0 ? 'green' : 'black'; // if score is positive, color green, otherwise black
+            score_span.textContent = tag_data.score > 0 ? `+${tag_data.score}` : `${tag_data.score}`; // if score is positive, add a + to the score, otherwise don't
+            score_container.appendChild(score_span);
+
+            const vetoes_span = document.createElement('span');
+            vetoes_span.className = 'vetoes';
+            vetoes_span.style.color = tag_data.vetoes > 0 ? 'green' : tag_data.vetoes < 0 ? 'red' : 'black'; // if vetoes is positive, color green, if negative color red, otherwise black
+            vetoes_span.textContent = ` (${tag_data.vetoes})`;
+            score_container.appendChild(vetoes_span);
+
+            const divider = document.createElement('hr');
+            divider.className = 'divider';
+            score_container.appendChild(divider);
+
+            fragment.appendChild(score_container);
+        }
+
+        if (tag_data.is_blocked) { // if the tag is blocked append a div saying its blocked
+            const blocked_info = document.createElement('div');
+            blocked_info.className = 'slave_tag_info';
+            blocked_info.textContent = `Blocked tag`;
+            fragment.appendChild(blocked_info);
+        }
+
+        if (tag_data.is_slave && tag_data.master_tag) { // if the tag is a slave tag and it has a master tag, add a div with the master tag info
+            const slave_info = document.createElement('div');
+            slave_info.className = 'slave_tag_info';
+            slave_info.textContent = `Slave of ${tag_data.master_tag}`;
+            fragment.appendChild(slave_info);
+        }
+
+        fragment.appendChild(create_vote_table(tag_data.user_votes));
+
+        if (!tag_data.is_slave) { // if the tag is not a slave tag, add a div with the slave tags info
+            const slave_tags = all_tags.filter(t => t.master_tag === `${tag_data.namespace}:${tag_data.tag_name}`); // get all the slave tags for the master tag
+            for (const slave of slave_tags) { // for each slave tag, add a div with the slave tag info
+                const slave_info = document.createElement('div');
+                slave_info.className = 'slave_tag_info';
+                slave_info.textContent = `Slave tag: ${slave.tag_name}`;
+                fragment.appendChild(slave_info);
+                fragment.appendChild(create_vote_table(slave.user_votes)); // add the vote table for the slave tag
+            }
+        }
+
+        return fragment;
     };
 
     const observe_gallery_taglist = (gallery_taglist) => { // observe the gallery taglist for changes
