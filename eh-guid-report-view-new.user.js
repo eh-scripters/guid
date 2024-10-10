@@ -116,10 +116,13 @@
             }
 
             const clean_tag_url = tag_link.href.replace('?skip_mastertags=1', ''); // remove ?skip_mastertags=1 from the tag url, i think this was necessary for the href when appending dead tags to work
+            const current_domain = window.location.hostname;
+            const tag_url = clean_tag_url.replace('e-hentai.org', current_domain); // replace e-hentai with the current domain if applicable
+
             const is_slave = !!tag_row.querySelector('td:first-child a[href*="taggroup?mastertag"]'); // if the tag has a taggroup link, it's a slave tag
             const is_blocked = !!tag_row.querySelector('td:first-child a[href*="tagns?searchtag"]'); // if the tag has a tagns , it's a blocked tag
 
-            const tag_data = { namespace, tag_name, tag_url: clean_tag_url, score, vetoes, user_votes, is_slave, is_blocked };
+            const tag_data = { namespace, tag_name, tag_url, score, vetoes, user_votes, is_slave, is_blocked };
 
             // slave tags are below the master tag in the taglist, so if current_master_tag is currently null, we set the last tag that is not slaved or blocked as the current master tag
             if (is_slave && !is_blocked && current_master_tag) { // if the current tag is a slave tag and we have a current master tag, set the master tag of this slave tag to the current master tag
@@ -244,9 +247,9 @@
                 } else if (tag.vetoes <= -1) { // if at least 1 negative veto sc
                     existing_tag_div.style.borderColor = "red";
                 }
+              continue; // if the tag exists in the taglist, we don't want to append it
             }
-
-            if (tag.score !== 0 && !isNaN(tag.score)) continue; // if the score is not 0 and it's not a number, skip it (means it's not a currently visible tag in the gallery taglist)
+            //if (tag.score !== 0 && !isNaN(tag.score)) continue; // if the score is not 0 and it's not a number, skip it (means it's not a currently visible tag in the gallery taglist)
 
             let namespace_row = null;
             let tags_td = null;
