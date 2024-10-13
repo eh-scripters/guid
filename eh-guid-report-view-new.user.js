@@ -4,8 +4,8 @@
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
 // @version     1.1.0
-// @grant       GM.xmlhttpRequest
-// @authro      -terry-
+// @grant       GM.xmlHttpRequest
+// @author      -terry-
 // ==/UserScript==
 
 /* Differences from the original script:
@@ -17,7 +17,7 @@
  * Easier extensibility for future features or improvements thanks to greater modularity such as parsing of the taglist response or creating the vote table from scratch.
  * Slave tags votes are now appended to the master tag's vote table. There is an info tip in the table that tells you which slave tag (multiple are supported too) the votes come from, appended after the current master tag votes.
  * Slaved and blocked tags are now grouped into their own namespace (S/B:). These tags also have an info tip that displays the master tag it belongs to or if it's blocked.
- * Temp tags (that have been downvoted but not grouped) are now grouped into "temp:".w
+ * Temp tags (that have been downvoted but not grouped) are now grouped into "temp:"
  * CSS Styles are now injected into the page via a separate function making it easier to modify or add to.
  * More robust error handling.
  * Can be used on fjord.
@@ -48,7 +48,6 @@
             .tooltip .score_container { text-align: left; margin-left: 3px; }
             .tooltip .score { font-weight: bold; }
             .tooltip .vetoes { font-weight: bold; }
-            .tooltip .spacer { height: 3px; }
             .tooltip .divider { margin-top: 3px; margin-bottom: 3px; border-bottom: 1px solid; }
             .tooltip table { width: 100%; border-collapse: collapse; }
             .tooltip td { padding: 2px 3px; text-align: left; }
@@ -65,7 +64,7 @@
     insert_styles();
 
     const fetch_taglist = () => new Promise((resolve, reject) => {
-        GM.xmlhttpRequest({
+        GM.xmlHttpRequest({
             method: 'GET',
             url: taglist_url,
             onload: response => resolve(response.responseText),
