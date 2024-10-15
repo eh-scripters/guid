@@ -3,7 +3,7 @@
 // @description Appends dead tags and tooltips containing vote data on tags for checkers
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.1.0
+// @version     1.1.1
 // @grant       GM.xmlHttpRequest
 // @author      -terry-
 // ==/UserScript==
@@ -75,7 +75,7 @@
     const parse_taglist_response = (html_string) => {
         const doc = new DOMParser().parseFromString(html_string, 'text/html');
         const tags = [];
-        let current_master_tag = null;
+        const master_tag_map = new Map();
 
         const tag_sections = doc.querySelectorAll('div[style="width:664px; margin:auto"]'); // this is the div that contains all info for each tag
         console.log(`Found ${tag_sections.length} tag sections`);
@@ -83,6 +83,7 @@
             const tag_row = section.querySelector('table tr'); // the row that contains the tag (+200 / +3	3530	parody:pangya)
             const tag_link = tag_row.querySelector('td:nth-child(3) a'); // the link to the tag (<a style="font-weight:bold" href="https://e-hentai.org/tag/parody:pangya?skip_mastertags=1">parody:pangya</a>)
             const score_text = tag_row.querySelector('td:nth-child(1)').textContent; // the score of the tag (+200 / +3)
+            const tagid = tag_row.querySelector('td:nth-child(2)').textContent; // the tagid (3530) (+200 / +3	3530	parody:pangya)
             const [score, vetoes] = score_text.split('/').map(s => parseInt(s.trim())); // extract the score and vetoes from the score_text
 
             if (!tag_link) continue;
@@ -126,11 +127,16 @@
 
             const tag_data = { namespace, tag_name, tag_url, score, vetoes, user_votes, is_slave, is_blocked };
 
-            // slave tags are below the master tag in the taglist, so if current_master_tag is currently null, we set the last tag that is not slaved or blocked as the current master tag
-            if (is_slave && !is_blocked && current_master_tag) { // if the current tag is a slave tag and we have a current master tag, set the master tag of this slave tag to the current master tag
-                tag_data.master_tag = `${current_master_tag.namespace}:${current_master_tag.tag_name}`;
-            } else if (!is_blocked) {
-                current_master_tag = tag_data;
+            if (!is_slave && !is_blocked) { // if the tag is not a slave or blocked tag, add it to the master_tag_map
+                master_tag_map.set(tagid, tag_data);
+            }
+
+            if (is_slave) { // if the tag is a slave tag, get the master tag and add it to the tag_data
+                const master_tag_id = tag_row.querySelector('td:first-child a[href*="taggroup?mastertag"]').href.split('mastertag=')[1]; // get the master tag id from the taggroup link
+                const master_tag = master_tag_map.get(master_tag_id); // get the master tag from the master_tag_map
+                if (master_tag) { // if the master tag exists, add it to the tag_data
+                    tag_data.master_tag = `${master_tag.namespace}:${master_tag.tag_name}`;
+                }
             }
 
             tags.push(tag_data);
@@ -319,6 +325,13 @@
             const slave_info = document.createElement('div');
             slave_info.className = 'slave_tag_info';
             slave_info.textContent = `Slave of ${tag_data.master_tag}`;
+            fragment.appendChild(slave_info);
+        }
+
+        if (tag_data.is_slave && !tag_data.master_tag) { // if the tag is a slave tag and it doesn't have a master tag, add a div saying the master tag is not present
+            const slave_info = document.createElement('div');
+            slave_info.className = 'slave_tag_info';
+            slave_info.textContent = `Master tag not present`;
             fragment.appendChild(slave_info);
         }
 
