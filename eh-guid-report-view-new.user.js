@@ -64,12 +64,19 @@
     insert_styles();
 
     const fetch_taglist = () => new Promise((resolve, reject) => {
-        GM.xmlHttpRequest({
-            method: 'GET',
-            url: taglist_url,
-            onload: response => resolve(response.responseText),
-            onerror: reject
-        });
+        if (window.location.host === 'e-hentai.org') {
+            fetch(taglist_url, { credentials: 'include' })
+                .then(res => res.text())
+                .then(resolve)
+                .catch(reject);
+        } else {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url: taglist_url,
+                onload: response => resolve(response.responseText),
+                onerror: reject
+            });
+        }
     });
 
     const parse_taglist_response = (html_string) => {
