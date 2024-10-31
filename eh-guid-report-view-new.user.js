@@ -3,7 +3,7 @@
 // @description Appends dead tags and tooltips containing vote data on tags for checkers
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.1.1
+// @version     1.1.2
 // @grant       GM.xmlHttpRequest
 // @author      -terry-
 // ==/UserScript==
@@ -28,6 +28,7 @@
 (() => {
     "use strict";
 
+    const is_eh = window.location.hostname === 'e-hentai.org';
     const gid = window.location.pathname.split('/')[2];
     const taglist_url = `https://repo.e-hentai.org/tools/taglist?gid=${gid}`;
     const uid = document.cookie.match(/ipb_member_id=(\d+)/)[1];
@@ -64,9 +65,9 @@
     insert_styles();
 
     const fetch_taglist = () => new Promise((resolve, reject) => {
-        if (window.location.host === 'e-hentai.org') {
+        if (is_eh) {
             fetch(taglist_url, { credentials: 'include' })
-                .then(res => res.text())
+                .then(response => response.text())
                 .then(resolve)
                 .catch(reject);
         } else {
@@ -192,9 +193,15 @@
 
     const append_dead_tags = (tags) => {
         const gallery_taglist = document.getElementById('taglist');
-        const tbody = gallery_taglist.querySelector('tbody');
-        const namespaces = tbody.getElementsByClassName('tc');
 
+        let tbody = gallery_taglist.querySelector('tbody');
+        if (!tbody) { // Create tbody if it doesn't exist
+            tbody = document.createElement('tbody');
+            gallery_taglist.textContent = ''; // clear the "No tags have been added for this gallery yet." text
+            gallery_taglist.appendChild(tbody);
+        }
+
+        const namespaces = tbody.getElementsByClassName('tc');
         tags.sort((a, b) => { // sort the tags so temp and blocked tags are at the bottom
             const priority = (tag) => (tag.namespace === 'temp:' || tag.namespace === 'S/B:') ? 1 : 0;
             const a_priority = priority(a);
@@ -361,17 +368,16 @@
     const observe_gallery_taglist = (gallery_taglist) => { // observe the gallery taglist for changes
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.removedNodes.length > 0 && mutation.removedNodes[0].tagName === 'TABLE') {
-                    console.log('Gallery taglist changed, updating tags');
-                    update_tags();
-                    break;
+                for (const node of mutation.removedNodes) {
+                    if (node.nodeName === 'TABLE') {
+                        console.log('Gallery taglist changed, updating tags');
+                        update_tags();
+                        return;
+                    }
                 }
             }
         });
-
-        observer.observe(gallery_taglist, {
-            childList: true
-        });
+        observer.observe(gallery_taglist, { childList: true });
     };
 
     const update_tags = async () => { // update all the data if the observer detects a change to the gallery taglist
@@ -380,10 +386,12 @@
         try {
             const response = await fetch_taglist();
             const tags = parse_taglist_response(response);
-            append_dead_tags(tags);
-            add_tooltips_to_tags(tags);
+            if (tags.length > 0) {
+                append_dead_tags(tags);
+                add_tooltips_to_tags(tags);
+            }
         } catch (error) {
-            console.error('Failed to fetch taglist:', error);
+            console.error('Failed to update tags:', error);
         }
     };
 
