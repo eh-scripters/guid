@@ -78,7 +78,7 @@
             // <tr>
             // <td style="width:80px; text-align:right">+200 / +3</td> (score_td)
             // <td style="width:50px; text-align:right"><a style="font-weight:bold" href="https://repo.e-hentai.org/tools/tagtrack?filter_tag=parody:pangya">3530</a></td> (id_td)
-            // <td style="width:500px"><a style="font-weight:bold" href="https://e-hentai.org/tag/parody:pangya?skip_mastertags=1">parody:pangya</a></td> (tag_td)  
+            // <td style="width:500px"><a style="font-weight:bold" href="https://e-hentai.org/tag/parody:pangya?skip_mastertags=1">parody:pangya</a></td> (tag_td)
             // </tr>
             if (!tag_row) {
                 debug_log('[parse_taglist_response] No tag row found');
@@ -151,8 +151,8 @@
                 tag_url = tag_url.replace('/tag/', '/tag/temp:');
             }
 
-            const is_slave = !!score_td.querySelector('a[href*="taggroup"]');
-            const is_blocked = !!score_td.querySelector('a[href*="tagns"]');
+            const is_slave = !!score_td.querySelector('a[href*="taggroup"]'); // if the tag has a href that contains taggroup, it is a slave tag
+            const is_blocked = !!score_td.querySelector('a[href*="tagns"]'); // if the tag has a href that contains tagns, it is a blocked tag
 
             const tag_data = { namespace, tag_name, tag_url, score, vetoes, user_votes, is_slave, is_blocked };
 
