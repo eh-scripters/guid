@@ -161,7 +161,7 @@
             }
 
             if (is_slave) { // if the tag is a slave tag, get the master tag id and add the slave's master tag to the tag data
-                const master_tag_id = score_td.querySelector('a[href*="taggroup"]')?.href.split('mastertag=')[1];
+                const master_tag_id = score_td.querySelector('a[href*="taggroup"]').href.split('mastertag=')[1];
                 const master_tag = master_tag_map.get(master_tag_id);
                 if (master_tag) {
                     tag_data.master_tag = `${master_tag.namespace}:${master_tag.tag_name}`;
@@ -398,7 +398,7 @@
             for (const mutation of mutations) {
                 for (const node of mutation.removedNodes) {
                     if (node.nodeName === 'TABLE') {
-                        debug_log('[observe_gallery_taglist] Gallery taglist changed, updating tags');
+                        debug_log('[observe_gallery_taglist] Gallery taglist changed');
                         update_tags();
                         return;
                     }
@@ -419,7 +419,7 @@
                 add_tooltips_to_tags(tags);
             }
         } catch (error) {
-            console.error('Failed to update tags:', error);
+            console.error('[update_tags] Failed to update tags:', { error, url: taglist_url });
         }
     };
 
