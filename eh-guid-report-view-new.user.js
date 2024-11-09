@@ -3,42 +3,29 @@
 // @description Appends dead tags and tooltips containing vote data on tags for checkers
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.1.2
+// @version     1.2
 // @grant       GM.xmlHttpRequest
 // @author      -terry-
 // ==/UserScript==
-
-/* Differences from the original script:
- * Added comments to explain what the important bits of the code do.
- * Overall improved readability and maintainability of the code, as well as general performance and efficiency.
- * Improved tooltip positioning and styling.
- * Almost everything should look the same, apart from some styling changes to the tooltip.
- * Appended dead tags are styled the same way too, one addition is that alive tags with a veto score of '<= -1' now have a red border.
- * Easier extensibility for future features or improvements thanks to greater modularity such as parsing of the taglist response or creating the vote table from scratch.
- * Slave tags votes are now appended to the master tag's vote table. There is an info tip in the table that tells you which slave tag (multiple are supported too) the votes come from, appended after the current master tag votes.
- * Slaved and blocked tags are now grouped into their own namespace (S/B:). These tags also have an info tip that displays the master tag it belongs to or if it's blocked.
- * Temp tags (that have been downvoted but not grouped) are now grouped into "temp:"
- * CSS Styles are now injected into the page via a separate function making it easier to modify or add to.
- * More robust error handling.
- * Can be used on fjord.
- * Missing features:
- * Can't toggle the script entirely, or toggle appending dead tags or stop auto updating (would be trivial to add if anyone cares, i never did)
-*/
 
 (() => {
     "use strict";
 
     const is_eh = window.location.hostname === 'e-hentai.org';
-    const gid = window.location.pathname.split('/')[2];
     const taglist_url = `https://repo.e-hentai.org/tools/taglist?gid=${gid}`;
     const uid = document.cookie.match(/ipb_member_id=(\d+)/)[1];
-
     const gallery_taglist = document.getElementById('taglist');
 
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
     tooltip.style.display = 'none';
     document.body.appendChild(tooltip);
+
+    // Debug logging - no-op when debug is false to avoid unnecessary overhead
+    const debug = false;
+    const debug_log = debug ?
+        (...args) => console.log('[report-view]:', ...args) :
+        () => {};
 
     const insert_styles = () => {
         if (document.getElementById('eh-guid-report-styles')) return;
@@ -61,16 +48,15 @@
         `;
         document.head.insertAdjacentHTML('beforeend', styles);
     };
-
     insert_styles();
 
     const fetch_taglist = () => new Promise((resolve, reject) => {
-        if (is_eh) {
+        if (is_eh) { // if the current page is e-hentai, use the native fetch api to get the taglist
             fetch(taglist_url, { credentials: 'include' })
                 .then(response => response.text())
                 .then(resolve)
                 .catch(reject);
-        } else {
+        } else { // otherwise, use GM.xmlHttpRequest to get the taglist due to CORS restrictions
             GM.xmlHttpRequest({
                 method: 'GET',
                 url: taglist_url,
@@ -85,173 +71,187 @@
         const tags = [];
         const master_tag_map = new Map();
 
-        const tag_sections = doc.querySelectorAll('div[style="width:664px; margin:auto"]'); // this is the div that contains all info for each tag
-        console.log(`Found ${tag_sections.length} tag sections`);
+        const tag_sections = doc.querySelectorAll('body > div[style*="width:664px"]'); // this is the div that contains all info for each tag
+        debug_log(`[parse_taglist_response] Found ${tag_sections.length} tag sections`);
         for (const section of tag_sections) {
-            const tag_row = section.querySelector('table tr'); // the row that contains the tag (+200 / +3	3530	parody:pangya)
-            const tag_link = tag_row.querySelector('td:nth-child(3) a'); // the link to the tag (<a style="font-weight:bold" href="https://e-hentai.org/tag/parody:pangya?skip_mastertags=1">parody:pangya</a>)
-            const score_text = tag_row.querySelector('td:nth-child(1)').textContent; // the score of the tag (+200 / +3)
-            const tagid = tag_row.querySelector('td:nth-child(2)').textContent; // the tagid (3530) (+200 / +3	3530	parody:pangya)
-            const [score, vetoes] = score_text.split('/').map(s => parseInt(s.trim())); // extract the score and vetoes from the score_text
+            const tag_row = section.querySelector('table tr');
+            // <tr>
+            // <td style="width:80px; text-align:right">+200 / +3</td> (score_td)
+            // <td style="width:50px; text-align:right"><a style="font-weight:bold" href="https://repo.e-hentai.org/tools/tagtrack?filter_tag=parody:pangya">3530</a></td> (id_td)
+            // <td style="width:500px"><a style="font-weight:bold" href="https://e-hentai.org/tag/parody:pangya?skip_mastertags=1">parody:pangya</a></td> (tag_td)
+            // </tr>
+            if (!tag_row) {
+                debug_log('[parse_taglist_response] No tag row found');
+                continue;
+            }
 
-            if (!tag_link) continue;
+            const [score_td, id_td, tag_td] = tag_row.children;
+            if (!score_td || !id_td || !tag_td) {
+                debug_log('[parse_taglist_response] No score, id, or tag td found');
+                continue;
+            }
+
+            const tag_link = tag_td.querySelector('a');
+            if (!tag_link) {
+                debug_log('[parse_taglist_response] No tag link found');
+                continue;
+            }
+
+            const [score, vetoes] = score_td.textContent.trim().split('/').map(s => parseInt(s));
+            const tagid = id_td.textContent.trim();
 
             let tag_text = tag_link.textContent;
-            if (!tag_text.includes(':')) { // if tag doesn't have a namespace, add it
-                tag_text = isNaN(score) ? `S/B:${tag_text}` : `temp:${tag_text}`; // if score is NaN, it's a slave or blocked tag, otherwise it's a temp tag
-            } else if (isNaN(score)) { // if it has a namespace but score is NaN, it's a slave or blocked tag thats been grouped
-                tag_text = `S/B:${tag_text.split(':')[1]}`;
+            const has_namespace = tag_text.includes(':');
+            if (!has_namespace) { // if the tag text does not contain a colon, it is either a slave/blocked tag or a temp tag
+                tag_text = isNaN(score) ? `S/B:${tag_text}` : `temp:${tag_text}`; // if the score is NaN, it's a slave or blocked tag, otherwise it's a temp tag
+            } else if (isNaN(score)) { // if the tag does contain a colon but the score is NaN, it is a grouped slave/blocked tag
+                tag_text = `S/B:${tag_text.split(':')[1]}`; // remove the existing namespace from the tag and instead use S/B:
             }
-            const [namespace, tag_name] = tag_text.split(':');
 
-            const user_table = section.querySelector('div[style="float:left; width:400px"] table tbody'); // this is the table that contains all the user votes for the tag
+            const [namespace, tag_name] = tag_text.split(':'); // split the tag text into namespace and tag name
+
             const user_votes = [];
-            if (user_table) {
-                for (const row of user_table.querySelectorAll('tr')) {
-                    const vote_td = row.querySelector('td:first-child'); // the mp/vote of the user
-                    const user_td = row.querySelector('td:nth-child(2)'); // the username of the user
-                    const date_td = row.querySelector('td:last-child'); // the date of the vote
+            const vote_table = section.querySelector('div[style*="float:left; width:400px"] table'); // this is the table that contains all the user votes for the tag
+            if (vote_table) {
+                for (const row of vote_table.rows) {
+                    const [vote_td, user_td, date_td] = row.cells; // get the vote, user, and date td's
+                    // <tr>
+                    // <td style="width:30px; font-weight:bold; color:green">+10</td> (vote_td)
+                    // <td style="width:200px;font-style:italic"><a href="https://repo.e-hentai.org/tools/taglist?uid=223510">sick2000sg</a></td> (user_td)
+                    // <td style="width:150px" title="2011-02-28 09:18:39">2011-02-28 09:18</td> (date_td)
+                    // </tr>
+                    if (!vote_td || !user_td || !date_td) {
+                        debug_log('[parse_taglist_response] No vote, user, or date td found');
+                        continue;
+                    }
+
+                    const user_link = user_td.querySelector('a');
+                    if (!user_link) {
+                        debug_log('[parse_taglist_response] No user link found');
+                        continue;
+                    }
 
                     user_votes.push({
-                        vote: vote_td.textContent.trim(), // the mp/vote of the user
-                        vote_color: vote_td.style.color, // the color of the vote (green = positive vote, red = negative vote)
-                        username: user_td.querySelector('a').textContent, // the username of the user
-                        uid: user_td.querySelector('a').href.split('uid=')[1], // the uid of the user
-                        user_color: user_td.style.color || '', // the color of the username (if the user has a colored username, it's because the vote is a veto) (red = negative vote, green = positive vote)
-                        date: date_td.textContent.trim() // the date of the vote
+                        vote: vote_td.textContent.trim(),
+                        vote_color: vote_td.style.color,
+                        username: user_link.textContent,
+                        uid: user_link.href.split('uid=')[1],
+                        user_color: user_td.style.color || '',
+                        date: date_td.textContent.trim()
                     });
                 }
             }
 
-            const clean_tag_url = tag_link.href.replace('?skip_mastertags=1', ''); // remove ?skip_mastertags=1 from the tag url, i think this was necessary for the href when appending dead tags to work
-            const current_domain = window.location.hostname;
-            let tag_url = clean_tag_url.replace('e-hentai.org', current_domain); // replace e-hentai with the current domain if applicable
-            if (namespace === 'temp' && !tag_url.includes(`${namespace}:`)) { // fix the tag_url for temp tags
-                tag_url = tag_url.replace('/tag/', `/tag/${namespace}:`);
+            let tag_url = tag_link.href.replace('?skip_mastertags=1', ''); // remove the skip_mastertags=1 query param from the tag url because `tooltip_contents.get(tag_element.href);` does not include the query param
+            if (!is_eh) {
+                tag_url = tag_url.replace('e-hentai.org', 'exhentai.org'); // change the urls to ex if we are not on eh (show tagged galleries links would link to the wrong site otherwise)
             }
 
-            const is_slave = !!tag_row.querySelector('td:first-child a[href*="taggroup?mastertag"]'); // if the tag has a taggroup link, it's a slave tag
-            const is_blocked = !!tag_row.querySelector('td:first-child a[href*="tagns?searchtag"]'); // if the tag has a tagns , it's a blocked tag
+            if (namespace === 'temp' && !tag_url.includes('temp:')) { // if the tag is a temp tag and the url does not already include temp:, add it
+                tag_url = tag_url.replace('/tag/', '/tag/temp:');
+            }
+
+            const is_slave = !!score_td.querySelector('a[href*="taggroup"]'); // if the tag has a href that contains taggroup, it is a slave tag
+            const is_blocked = !!score_td.querySelector('a[href*="tagns"]'); // if the tag has a href that contains tagns, it is a blocked tag
 
             const tag_data = { namespace, tag_name, tag_url, score, vetoes, user_votes, is_slave, is_blocked };
 
-            if (!is_slave && !is_blocked) { // if the tag is not a slave or blocked tag, add it to the master_tag_map
+            if (!is_slave && !is_blocked) { // if the tag is not a slave or blocked tag, add it to the master tag map
                 master_tag_map.set(tagid, tag_data);
             }
 
-            if (is_slave) { // if the tag is a slave tag, get the master tag and add it to the tag_data
-                const master_tag_id = tag_row.querySelector('td:first-child a[href*="taggroup?mastertag"]').href.split('mastertag=')[1]; // get the master tag id from the taggroup link
-                const master_tag = master_tag_map.get(master_tag_id); // get the master tag from the master_tag_map
-                if (master_tag) { // if the master tag exists, add it to the tag_data
+            if (is_slave) { // if the tag is a slave tag, get the master tag id and add the slave's master tag to the tag data
+                const master_tag_id = score_td.querySelector('a[href*="taggroup"]').href.split('mastertag=')[1];
+                const master_tag = master_tag_map.get(master_tag_id);
+                if (master_tag) {
                     tag_data.master_tag = `${master_tag.namespace}:${master_tag.tag_name}`;
                 }
             }
 
             tags.push(tag_data);
+            debug_log(`[parse_taglist_response] Parsed tag: ${tag_text}`, { tag_data });
         }
 
-        console.log(`Parsed ${tags.length} tags`);
+        debug_log(`[parse_taglist_response] Parsed ${tags.length} tags, ${master_tag_map.size} master tags, ${tags.filter(tag => tag.is_slave).length} slave tags, ${tags.filter(tag => tag.is_blocked).length} blocked tags`);
         return tags;
     };
 
-    const create_vote_table = (votes, tag_name = '') => {
-        const table = document.createElement('table');
-        const tbody = document.createElement('tbody');
-
-        if (tag_name) {
-            const header = document.createElement('tr');
-            const th = document.createElement('th');
-            th.colSpan = 3;
-            th.textContent = tag_name;
-            header.appendChild(th);
-            tbody.appendChild(header);
-        }
-
-        for (const vote of votes) {
-            const row = document.createElement('tr');
-
-            const vote_td = document.createElement('td');
-            vote_td.style.color = vote.vote_color;
-            vote_td.style.fontWeight = 'bold';
-            vote_td.textContent = vote.vote;
-
-            const user_td = document.createElement('td');
-            user_td.className = vote.user_color ? (vote.vote_color === 'green' ? 'veto_up' : 'veto_down') : ''; // if the user color is not empty, set the class to veto_up if the vote color is green, otherwise set to veto_down (vetoers have colored usernames in the taglist)
-            if (vote.uid === uid) user_td.style.border = '1px solid'; // if the tag has been voted by the user, add a border to that user
-            user_td.textContent = vote.username;
-
-            const date_td = document.createElement('td');
-            date_td.textContent = `${vote.date}`;
-
-            row.append(vote_td, user_td, date_td);
-            tbody.appendChild(row);
-        }
-
-        table.appendChild(tbody);
-        return table;
-    };
-
     const append_dead_tags = (tags) => {
-        const gallery_taglist = document.getElementById('taglist');
-
+        debug_log(`[append_dead_tags] Starting to append/update ${tags.length} tags`);
+        const fragment = document.createDocumentFragment();
         let tbody = gallery_taglist.querySelector('tbody');
-        if (!tbody) { // Create tbody if it doesn't exist
+
+        if (!tbody) { // Create tbody if it doesn't exist (means there are no visible tags)
+            debug_log('[append_dead_tags] No tbody found, creating new one');
             tbody = document.createElement('tbody');
             gallery_taglist.textContent = ''; // clear the "No tags have been added for this gallery yet." text
             gallery_taglist.appendChild(tbody);
         }
 
-        const namespaces = tbody.getElementsByClassName('tc');
-        tags.sort((a, b) => { // sort the tags so temp and blocked tags are at the bottom
-            const priority = (tag) => (tag.namespace === 'temp:' || tag.namespace === 'S/B:') ? 1 : 0;
-            const a_priority = priority(a);
-            const b_priority = priority(b);
+        const NAMESPACE_PRIORITY = {
+            'temp': 1,
+            'S/B': 1
+        };
 
-            if (a_priority !== b_priority) return a_priority - b_priority;
-            return a.namespace.localeCompare(b.namespace);
+        // Sort tags - temp and blocked tags go to bottom
+        tags.sort((a, b) => {
+            const a_priority = NAMESPACE_PRIORITY[a.namespace] || 0;
+            const b_priority = NAMESPACE_PRIORITY[b.namespace] || 0;
+            return a_priority !== b_priority ? a_priority - b_priority :
+                a.namespace < b.namespace ? -1 : 1;
         });
 
+        const namespaces = tbody.getElementsByClassName('tc');
+        let current_namespace = '';
+        let current_td = null;
+
         for (const tag of tags) {
-            // gonna do this here for now cuz why not
-            const existing_tag_div = document.getElementById(`td_${tag.namespace}:${tag.tag_name.split(' ').join('_')}`);
-            if (existing_tag_div) {
+            const tag_id = `td_${tag.namespace}:${tag.tag_name.split(' ').join('_')}`;
+            const existing_tag = document.getElementById(tag_id);
+            if (existing_tag) {
                 if (tag.vetoes >= 3) { // if 3 positive veto border green
-                    existing_tag_div.style.borderColor = "green";
-                } else if (tag.vetoes <= -1) { // if at least 1 negative veto sc
-                    existing_tag_div.style.borderColor = "red";
+                    existing_tag.style.borderColor = "green";
+                } else if (tag.vetoes <= -1) { // if at least 1 negative veto border red
+                    existing_tag.style.borderColor = "red";
                 }
-              continue; // if the tag already exists in the taglist, we don't want to append it
+                debug_log(`[append_dead_tags] Skipping existing tag: ${tag.tag_name}`, { tag_data: tag });
+                continue; // skip appending existing tags
             }
 
-            let namespace_row = null;
-            let tags_td = null;
+            // create or find existing namespace row
+            const namespace_key = `${tag.namespace}:`;
+            if (namespace_key !== current_namespace) {
+                current_namespace = namespace_key;
+                current_td = null;
 
-            for (const ns of namespaces) { // find the namespace row and tags td for the tag
-                if (ns.textContent === `${tag.namespace}:`) {
-                    namespace_row = ns.parentElement;
-                    tags_td = namespace_row.querySelector('td:last-child');
-                    break;
+                // find existing namespace row
+                for (const ns of namespaces) {
+                    if (ns.textContent === namespace_key) {
+                        current_td = ns.parentElement.querySelector('td:last-child');
+                        break;
+                    }
+                }
+                if (!current_td) { // if the namespace row doesn't exist, create it
+                    debug_log(`[append_dead_tags] No namespace row found for ${namespace_key}, creating new one`);
+                    const namespace_row = document.createElement('tr');
+                    const namespace_td = document.createElement('td');
+                    namespace_td.className = 'tc';
+                    namespace_td.textContent = namespace_key;
+                    namespace_row.appendChild(namespace_td);
+
+                    current_td = document.createElement('td');
+                    namespace_row.appendChild(current_td);
+                    fragment.appendChild(namespace_row);
                 }
             }
 
-            if (!namespace_row) { // if the namespace row doesn't exist, create it
-                namespace_row = document.createElement('tr');
-                const namespace_td = document.createElement('td');
-                namespace_td.className = 'tc';
-                namespace_td.textContent = `${tag.namespace}:`;
-                namespace_row.appendChild(namespace_td);
-
-                tags_td = document.createElement('td');
-                namespace_row.appendChild(tags_td);
-                tbody.appendChild(namespace_row);
-            }
-
+            // create tag elements
             const tag_div = document.createElement('div'); // create the tag div like a usual tag in the gallery taglist
             tag_div.id = `td_${tag.namespace}:${tag.tag_name}`;
             tag_div.className = tag.vetoes <= -3 ? 'gt' : tag.vetoes < 0 ? 'gtl' : 'gtw'; // if dead tag is veto'd, set the class to gt, if less than 0 set to gtl, otherwise set to gtw
             tag_div.style.cssText = 'border-color: red; opacity: 0.5;'; // set the border color to red and the opacity to 0.5 for the appended dead tags
 
-            const tag_a = document.createElement('a'); // create the tag a element like a usual tag in the gallery taglist
+            const tag_a = document.createElement('a');
             tag_a.id = `ta_${tag.namespace}:${tag.tag_name}`;
             tag_a.href = tag.tag_url;
             tag_a.textContent = tag.tag_name;
@@ -262,49 +262,49 @@
             tag_a.className = voted_by_me ? 'tup' : voted_down_by_me ? 'tdn' : ''; // if the tag has been voted up by the user, set the class to tup, if voted down set to tdn, otherwise set to empty
 
             tag_div.appendChild(tag_a);
-            tags_td.appendChild(tag_div);
+            current_td.appendChild(tag_div);
+            debug_log(`[append_dead_tags] Appended tag: ${tag.tag_name}`, { tag_data: tag });
         }
+
+        tbody.appendChild(fragment);
+        debug_log('[append_dead_tags] Finished appending dead tags');
     };
 
-    const add_tooltips_to_tags = (tags) => {
-        const tag_map = new Map(tags.map(tag => [tag.tag_url, tag]));
-        const taglist = gallery_taglist;
-        const tooltip_contents = new Map();
+    const create_vote_table = (votes) => {
+        const table = document.createElement('table');
+        const tbody = document.createElement('tbody');
 
-        // Pre-generate tooltip content for each tag and cache it in the tooltip_contents map (updates when update_tags is called)
-        for (const tag of tags) {
-            const content = create_tooltip_content(tag, tags);
-            tooltip_contents.set(tag.tag_url, content);
+        for (const vote of votes) {
+            const row = document.createElement('tr');
+
+            const vote_td = document.createElement('td'); // vote score cell
+            vote_td.style.color = vote.vote_color;
+            vote_td.style.fontWeight = 'bold';
+            vote_td.textContent = vote.vote;
+
+            const user_td = document.createElement('td'); // username cell
+            if (vote.user_color) { // if the user color is not empty, set the class to veto_up if the vote color is green, otherwise set to veto_down (vetoers have colored usernames in the taglist)
+                user_td.className = vote.vote_color === 'green' ? 'veto_up' : 'veto_down';
+            }
+            if (vote.uid === uid) { // if the tag has been voted by the user, add a border to that user
+                user_td.style.border = '1px solid';
+            }
+            user_td.textContent = vote.username;
+
+            const date_td = document.createElement('td'); // date cell
+            date_td.textContent = `${vote.date}`;
+
+            row.append(vote_td, user_td, date_td);
+            tbody.appendChild(row);
         }
 
-        taglist.addEventListener('mouseenter', (event) => { // when the mouse hovers over a tag
-            const tag_element = event.target.closest('a'); // get the element of the tag we are hovering over
-            if (!tag_element) return;
-
-            const tag_data = tag_map.get(tag_element.href); // get the taglist data for the tag we are hovering over
-            if (!tag_data) return;
-
-            const fragment = tooltip_contents.get(tag_element.href); // get the cached tooltip content for the tag we are hovering over
-            if (!fragment) return;
-
-            tooltip.innerHTML = ''; // clear the tooltip
-            tooltip.appendChild(fragment.cloneNode(true)); // append the cached tooltip content to the tooltip
-
-            const rect = tag_element.getBoundingClientRect(); // get the bounding rectangle of the tag we are hovering over
-            tooltip.style.left = `${rect.left + window.scrollX}px`;
-            tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
-            tooltip.style.display = 'block'; // display the tooltip
-        }, true);
-
-        taglist.addEventListener('mouseleave', (event) => {
-            if (event.target.closest('a')) {
-                tooltip.style.display = 'none'; // hide the tooltip
-            }
-        }, true);
+        table.appendChild(tbody);
+        return table;
     };
 
     const create_tooltip_content = (tag_data, all_tags) => {
         const fragment = document.createDocumentFragment();
+
         if (!isNaN(tag_data.score)) { // if the score is not NaN, add the score and vetoes to the tooltip (blocked and slave tags don't have scores so we can ignore them)
             const score_container = document.createElement('div'); // this is the div that contains the total score and total vetoes
             score_container.className = 'score_container';
@@ -329,30 +329,22 @@
         }
 
         if (tag_data.is_blocked) { // if the tag is blocked append a div saying its blocked
-            const blocked_info = document.createElement('div');
-            blocked_info.className = 'slave_tag_info';
-            blocked_info.textContent = `Blocked tag`;
-            fragment.appendChild(blocked_info);
+            const info = document.createElement('div');
+            info.className = 'slave_tag_info';
+            info.textContent = 'Blocked tag';
+            fragment.appendChild(info);
+        } else if (tag_data.is_slave) {
+            const info = document.createElement('div');
+            info.className = 'slave_tag_info';
+            info.textContent = tag_data.master_tag ? `Slave of ${tag_data.master_tag}` : 'Master tag not present'; // if the tag is a slave tag and it has a master tag, add a div with the master tag info, otherwise add a div saying the master tag is not present
+            fragment.appendChild(info);
         }
 
-        if (tag_data.is_slave && tag_data.master_tag) { // if the tag is a slave tag and it has a master tag, add a div with the master tag info
-            const slave_info = document.createElement('div');
-            slave_info.className = 'slave_tag_info';
-            slave_info.textContent = `Slave of ${tag_data.master_tag}`;
-            fragment.appendChild(slave_info);
-        }
-
-        if (tag_data.is_slave && !tag_data.master_tag) { // if the tag is a slave tag and it doesn't have a master tag, add a div saying the master tag is not present
-            const slave_info = document.createElement('div');
-            slave_info.className = 'slave_tag_info';
-            slave_info.textContent = `Master tag not present`;
-            fragment.appendChild(slave_info);
-        }
-
+        // Vote table for current tag
         fragment.appendChild(create_vote_table(tag_data.user_votes));
 
         if (!tag_data.is_slave) { // if the tag is not a slave tag, add a div with the slave tags info
-            const slave_tags = all_tags.filter(t => t.master_tag === `${tag_data.namespace}:${tag_data.tag_name}`); // get all the slave tags for the master tag
+            const slave_tags = all_tags.filter(tag => tag.master_tag === `${tag_data.namespace}:${tag_data.tag_name}`); // get all the slave tags for the master tag
             for (const slave of slave_tags) { // for each slave tag, add a div with the slave tag info
                 const slave_info = document.createElement('div');
                 slave_info.className = 'slave_tag_info';
@@ -365,12 +357,48 @@
         return fragment;
     };
 
+    const add_tooltips_to_tags = (tags) => {
+        debug_log(`[add_tooltips_to_tags] Setting up tooltips for ${tags.length} tags`);
+        const tooltip_contents = new Map();
+
+        // pre-generate all tooltip contents
+        for (const tag of tags) {
+            tooltip_contents.set(tag.tag_url, create_tooltip_content(tag, tags));
+        }
+
+        const handle_mouse_enter = (event) => {
+            const tag_element = event.target.closest('a'); // get the element of the tag we are hovering over
+            if (!tag_element) return;
+
+            const fragment = tooltip_contents.get(tag_element.href); // get the cached tooltip content for the tag we are hovering over
+            if (!fragment) return;
+
+            tooltip.innerHTML = ''; // clear the tooltip
+            tooltip.appendChild(fragment.cloneNode(true)); // append the cached tooltip content to the tooltip
+
+            const rect = tag_element.getBoundingClientRect(); // get the bounding rectangle of the tag we are hovering over
+            tooltip.style.left = `${rect.left + window.scrollX}px`;
+            tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
+            tooltip.style.display = 'block'; // display the tooltip
+        };
+
+        const handle_mouse_leave = (event) => {
+            if (event.target.closest('a')) {
+                tooltip.style.display = 'none'; // hide the tooltip
+            }
+        };
+
+        gallery_taglist.addEventListener('mouseenter', handle_mouse_enter, true);
+        gallery_taglist.addEventListener('mouseleave', handle_mouse_leave, true);
+        debug_log('[add_tooltips_to_tags] Finished setting up tooltips');
+    };
+
     const observe_gallery_taglist = (gallery_taglist) => { // observe the gallery taglist for changes
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
                 for (const node of mutation.removedNodes) {
                     if (node.nodeName === 'TABLE') {
-                        console.log('Gallery taglist changed, updating tags');
+                        debug_log('[observe_gallery_taglist] Gallery taglist changed');
                         update_tags();
                         return;
                     }
@@ -391,11 +419,11 @@
                 add_tooltips_to_tags(tags);
             }
         } catch (error) {
-            console.error('Failed to update tags:', error);
+            console.error('[update_tags] Failed to update tags:', { error, url: taglist_url });
         }
     };
 
-    // Initialize script
+    // initialize the script
     update_tags();
     observe_gallery_taglist(gallery_taglist);
 })();
