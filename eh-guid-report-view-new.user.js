@@ -3,7 +3,7 @@
 // @description Appends dead tags and tooltips containing vote data on tags for checkers
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.3
+// @version     1.3.1
 // @grant       GM.xmlHttpRequest
 // @author      -terry-
 // ==/UserScript==
@@ -326,7 +326,7 @@
             if (!tag_element) return;
 
             active_tooltip_target = tag_element;
-            display_tooltip_for(tag_element);
+            display_tooltip(tag_element);
         };
 
         const handle_mouse_leave = () => {
