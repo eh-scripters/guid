@@ -3,40 +3,56 @@
 // @description Appends dead tags and tooltips containing vote data on tags for checkers
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.3.1
+// @version     1.4.0
+// @grant       GM.addStyle
 // @grant       GM.xmlHttpRequest
-// @author      -terry-
+// @author      terry
 // ==/UserScript==
+
+/* global unsafeWindow */
 
 (() => {
     "use strict";
 
+    const PAGE = typeof unsafeWindow !== 'undefined' && unsafeWindow ? unsafeWindow : window;
+
     const is_eh = window.location.hostname === 'e-hentai.org';
+
+    const toggle_tag_menu = (tag_id, canonical_tag_name, tag_anchor) => {
+        const fn = PAGE && typeof PAGE.toggle_tagmenu === 'function' ? PAGE.toggle_tagmenu : null;
+        if (!fn) return true;
+        return fn(tag_id, canonical_tag_name, tag_anchor);
+    };
+
+    const gid = (PAGE && typeof PAGE.gid === 'number') ? PAGE.gid : null;
+    if (!Number.isFinite(gid)) return;
+
     const taglist_url = `https://repo.e-hentai.org/tools/taglist?gid=${gid}`;
-    const uid = parseInt(document.cookie.match(/ipb_member_id=(\d+)/)[1]);
-    const tooltip_contents = new Map();
-    let active_tooltip_target = null; // Track the element the tooltip is for
+    const uid = (PAGE && typeof PAGE.apiuid === 'number') ? PAGE.apiuid : null;
+
+    let tags_by_id = new Map(); // tagId -> tag data
+    let slaves_by_master_id = new Map(); // masterTagId -> slave tags
+    const tooltip_cache = new Map(); // tagId -> DocumentFragment
+    let active_tooltip_target = null; // Track the tag div the tooltip is for
 
     const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip';
+    tooltip.id = 'eh-guid-report-tooltip';
+    tooltip.className = 'eh-guid-report-tooltip';
     tooltip.style.display = 'none';
     document.body.append(tooltip);
 
-    // insert styles for the tooltip
-    document.head.insertAdjacentHTML('beforeend', `
-        <style id="eh-guid-report-styles">
-            .tooltip { position: absolute; background-color: #EDEBDF; color: black; padding: 4px; border: 1px solid; border-radius: 6px; font-size: 13px; text-align: left; max-width: 350px; z-index: 1000; }
-            .tooltip .score_container { margin: 0 1.5px; }
-            .tooltip .score { font-weight: bold; }
-            .tooltip .vetoes { font-weight: bold; }
-            .tooltip .divider { margin: 3px 0; border-bottom: 1px solid; }
-            .tooltip table { border-collapse: collapse; }
-            .tooltip td { padding: 1.5px 2.5px; }
-            .tooltip tr:nth-child(even) { background-color: #E3E0D1; }
-            .tooltip .veto_up { background-color: lightgreen; font-weight: bold; }
-            .tooltip .veto_down { background-color: lightpink; font-weight: bold; }
-            .tooltip .slave_tag_info { font-style: italic; margin: 3px 0; background-color: #999; text-align: center; }
-        </style>
+    GM.addStyle(`
+        #eh-guid-report-tooltip { position: absolute; background-color: #EDEBDF; color: black; padding: 4px; border: 1px solid; border-radius: 6px; font-size: 13px; text-align: left; max-width: 350px; z-index: 1000; pointer-events: none; }
+        #eh-guid-report-tooltip .score_container { margin: 0 1.5px; }
+        #eh-guid-report-tooltip .score { font-weight: bold; }
+        #eh-guid-report-tooltip .vetoes { font-weight: bold; }
+        #eh-guid-report-tooltip .divider { margin: 3px 0; border-bottom: 1px solid; }
+        #eh-guid-report-tooltip table { border-collapse: collapse; }
+        #eh-guid-report-tooltip td { padding: 1.5px 2.5px; }
+        #eh-guid-report-tooltip tr:nth-child(even) { background-color: #E3E0D1; }
+        #eh-guid-report-tooltip .veto_up { background-color: lightgreen; font-weight: bold; }
+        #eh-guid-report-tooltip .veto_down { background-color: lightpink; font-weight: bold; }
+        #eh-guid-report-tooltip .slave_tag_info { font-style: italic; margin: 3px 0; background-color: #999; text-align: center; }
     `);
 
     const fetch_taglist = async () => {
@@ -45,7 +61,7 @@
                 const response = await fetch(taglist_url, { credentials: 'include' });
                 return await response.text();
             } else { // otherwise, use GM.xmlHttpRequest to bypass CORS restrictions
-                const response = await GM.xmlHttpRequest({ url: taglist_url });
+                const response = await GM.xmlHttpRequest({ method: 'GET', url: taglist_url });
                 return response.responseText;
             }
         } catch (error) {
@@ -57,10 +73,12 @@
     const parse_taglist = (response) => {
         const doc = new DOMParser().parseFromString(response, 'text/html');
         const tags = [];
+        const tags_by_id = new Map();
 
         const tag_sections = doc.querySelectorAll('div[style*="width:664px"]'); // this div contains all the info for each tag
         for (const section of tag_sections) {
-            const row = section.querySelector('tr');
+            const row = section.querySelector('table tr');
+            if (!row) continue;
             // <tr>
             // <td style="width:80px; text-align:right">+200 / +3</td> (score_td)
             // <td style="width:50px; text-align:right"><a style="font-weight:bold" href="https://repo.e-hentai.org/tools/tagtrack?filter_tag=parody:pangya">3530</a></td> (id_td)
@@ -69,24 +87,49 @@
             const [score_td, id_td, tag_td] = row.cells;
             if (!score_td || !id_td || !tag_td) continue;
 
-            const score_text = score_td.textContent.trim();
-            const [score, vetoes] = score_text.includes('/') ? score_text.split('/').map(s => parseInt(s)) : [0, 0];
-            const is_slave = score_text.includes('S'); // if the score text contains an S, it is a slave tag
-            const is_blocked = score_text.includes('B'); // if the score text contains a B, it is a blocked tag
+            const score_text = score_td.textContent.replace(/\s+/g, ' ').trim();
+            const numeric_match = score_text.match(/^([+-]?\d+)\s*\/\s*([+-]?\d+)$/);
+            const score = numeric_match ? Number.parseInt(numeric_match[1], 10) : 0;
+            const vetoes = numeric_match ? Number.parseInt(numeric_match[2], 10) : 0;
 
-            const id = parseInt(id_td.textContent.trim());
+            const is_slave = /\bS\b/.test(score_text);
+            const is_blocked = /\bB\b/.test(score_text);
 
-            let tag_text = tag_td.textContent.trim();
-            if (!tag_text.includes(':')) { // if the tag text does not contain a colon, it is either a slave/blocked tag or a temp tag
-                tag_text = (is_slave || is_blocked) ? `S/B:${tag_text}` : `temp:${tag_text}`; // if it's a slave or blocked tag, use S/B namespace, otherwise it's a temp tag
-            } else if (is_slave || is_blocked) { // if the tag does contain a colon but it's a slave/blocked tag, we want to standardize the namespace
-                tag_text = `S/B:${tag_text.split(':')[1]}`; // remove the existing namespace from the tag and instead use S/B:
+            const id = Number.parseInt(id_td.textContent.trim(), 10);
+            if (!Number.isFinite(id)) continue;
+
+            const raw_tag_label = tag_td.textContent.trim();
+            let canonical_tag_name;
+            let namespace;
+            let name;
+
+            if (raw_tag_label.includes(':')) {
+                const colon_index = raw_tag_label.indexOf(':');
+                const raw_ns = raw_tag_label.slice(0, colon_index);
+                const raw_name = raw_tag_label.slice(colon_index + 1);
+                canonical_tag_name = raw_tag_label;
+                name = raw_name;
+                namespace = (is_slave || is_blocked) ? 'S/B' : raw_ns;
+            } else if (is_slave || is_blocked) {
+                canonical_tag_name = raw_tag_label;
+                name = raw_tag_label;
+                namespace = 'S/B';
+            } else {
+                canonical_tag_name = `temp:${raw_tag_label}`;
+                name = raw_tag_label;
+                namespace = 'temp';
             }
-            const [namespace, name] = tag_text.split(':');
+
+            let master_tag_id = null;
+            if (is_slave) {
+                const href = score_td.querySelector('a[href*="mastertag="]')?.href || '';
+                const match = href.match(/mastertag=(\d+)/);
+                if (match) master_tag_id = Number.parseInt(match[1], 10);
+            }
 
             const vote_data = [];
-            const vote_table = section.querySelector('div[style*="float:left; width:400px"] table'); // this div contains the vote table for the tag
-            for (const row of vote_table.rows) {
+            const vote_table = section.querySelector('a[href*="uid="]')?.closest('table') || null;
+            if (vote_table) for (const row of vote_table.rows) {
                 // <tr>
                 // <td style="width:30px; font-weight:bold; color:green">+10</td> (vote_td)
                 // <td style="width:200px;font-style:italic"><a href="https://repo.e-hentai.org/tools/taglist?uid=223510">sick2000sg</a></td> (user_td)
@@ -95,43 +138,64 @@
                 const [vote_td, user_td, date_td] = row.cells;
                 if (!vote_td || !user_td || !date_td) continue;
 
+                const href = user_td.firstElementChild?.href || '';
+                const match = href.match(/uid=(\d+)/);
+                const vote_uid = match ? Number.parseInt(match[1], 10) : Number.NaN;
                 vote_data.push({
                     vote: vote_td.textContent.trim(),
                     is_positive: vote_td.textContent.trim().startsWith('+'),
                     username: user_td.textContent.trim(),
-                    uid: parseInt(user_td.firstElementChild.href.split('uid=')[1]),
+                    uid: Number.isFinite(vote_uid) ? vote_uid : null,
                     is_vetoer: Boolean(user_td.style.color),
                     date: date_td.textContent.trim()
                 });
             }
 
-            // create the tag url (the href in tag_td includes ?skip_mastertags=1 and temp tags do not include the namespace in the href so we build the url manually)
-            const encoded_tag = `${namespace}:${name}`.replace(/\s+/g, '+');
+            // Match site behavior.
+            const encoded_tag = encodeURIComponent(canonical_tag_name).replace(/%20/g, '+').replace(/%3A/gi, ':');
             const url = `https://${is_eh ? 'e-hentai.org' : 'exhentai.org'}/tag/${encoded_tag}`;
 
-            const tag_data = { id, namespace, name, url, score, vetoes, is_slave, is_blocked, vote_data };
+            const tag_data = {
+                id,
+                canonical_tag_name,
+                namespace,
+                name,
+                url,
+                score,
+                vetoes,
+                is_slave,
+                is_blocked,
+                master_tag_id: Number.isFinite(master_tag_id) ? master_tag_id : null,
+                vote_data
+            };
 
-            // if the tag is a slave tag, and the master tag is present in the taglist, add the master_tag property to the tag_data
-            if (is_slave) {
-                const master_tag_id = parseInt(score_td.firstElementChild.href.split('mastertag=')[1]);
-                const master_tag = tags.find(tag => tag.id === master_tag_id);
-                if (master_tag) {
-                    tag_data.master_tag = `${master_tag.namespace}:${master_tag.name}`;
-                }
-            }
             tags.push(tag_data);
+            tags_by_id.set(id, tag_data);
         }
+
+        // Second pass: resolve slave -> master label when possible.
+        for (const tag of tags) {
+            if (!tag.is_slave || !tag.master_tag_id) continue;
+            const master = tags_by_id.get(tag.master_tag_id);
+            if (master) tag.master_tag = master.canonical_tag_name;
+        }
+
         return tags;
-    }
+    };
 
     const append_dead_tags = (tags, gallery_taglist) => {
-        let tbody = gallery_taglist.querySelector('tbody');
+        let table = gallery_taglist.querySelector('table');
+        let tbody = table?.querySelector('tbody') || null;
 
-        // create tbody if it doesn't exist (means there are no alive tags)
+        // Create a table/tbody if they don't exist (no visible tags).
+        if (!table) {
+            gallery_taglist.textContent = '';
+            table = document.createElement('table');
+            gallery_taglist.append(table);
+        }
         if (!tbody) {
             tbody = document.createElement('tbody');
-            gallery_taglist.textContent = ''; // clear the "No tags have been added for this gallery yet." text
-            gallery_taglist.append(tbody);
+            table.append(tbody);
         }
 
         // sort namespaces - temp and blocked tags go to bottom
@@ -153,10 +217,17 @@
         let current_namespace = '';
         let current_td = null;
 
+        const existing_tag_ids = new Set();
+        for (const div of gallery_taglist.querySelectorAll('div[id^="td_"]')) {
+            existing_tag_ids.add(div.id);
+        }
+
         for (const tag of tags) {
-            const base_id = `${tag.namespace}:${tag.name.replace(/\s+/g, '_')}`;
-            const existing_tag = document.getElementById(`td_${base_id}`);
-            if (existing_tag) {
+            const tag_key = tag.canonical_tag_name.replace(/\s+/g, '_');
+            const existing_id = `td_${tag_key}`;
+            if (existing_tag_ids.has(existing_id)) {
+                const existing_tag = document.getElementById(existing_id);
+                if (!existing_tag) continue;
                 existing_tag.style.borderColor = tag.vetoes >= 3 ? "green" : // if the tag has 3 or more positive vetoes, set the border color to green
                     tag.vetoes <= -1 ? "red" : ""; // if it has at least 1 negative veto, set the border color to red, otherwise set to empty
                 continue; // skip appending existing tags
@@ -182,17 +253,18 @@
 
             // create tag elements like a normal tag in the gallery taglist
             const tag_div = document.createElement('div');
-            tag_div.id = `td_${base_id}`;
+            tag_div.id = `td_${tag_key}`;
             tag_div.className = tag.vetoes <= -3 ? 'gt' : tag.vetoes < 0 ? 'gtl' : 'gtw'; // if dead tag is veto'd, set the class to gt (solid), if less than 0 set to gtl (dashed), otherwise set to gtw (dotted)
             tag_div.style.cssText = 'border-color: red; opacity: 0.5;'; // set the border color to red and the opacity to 0.5 for the appended dead tags
+            tag_div.dataset.tagId = String(tag.id);
 
             const tag_a = document.createElement('a');
-            tag_a.id = `ta_${base_id}`;
+            tag_a.id = `ta_${tag_key}`;
             tag_a.href = tag.url;
             tag_a.textContent = tag.name;
-            tag_a.onclick = () => toggle_tagmenu(tag.id, `${tag.namespace}:${tag.name}`, tag_a);
-            tag_a.className = tag.vote_data.some(vote => vote.uid === uid && vote.is_positive) ? 'tup' : // if the tag has been voted up by the user, set the class to tup
-                tag.vote_data.some(vote => vote.uid === uid && !vote.is_positive) ? 'tdn' : ''; // if the tag has been voted down by the user, set the class to tdn, otherwise set to empty
+            tag_a.onclick = () => toggle_tag_menu(tag.id, tag.canonical_tag_name, tag_a);
+            tag_a.className = uid && tag.vote_data.some(vote => vote.uid === uid && vote.is_positive) ? 'tup' : // if the tag has been voted up by the user, set the class to tup
+                uid && tag.vote_data.some(vote => vote.uid === uid && !vote.is_positive) ? 'tdn' : ''; // if the tag has been voted down by the user, set the class to tdn, otherwise set to empty
 
             tag_div.append(tag_a);
             current_td.append(tag_div);
@@ -211,7 +283,7 @@
         if (vote.is_vetoer) {
             user_td.className = vote.is_positive ? 'veto_up' : 'veto_down';
         }
-        if (vote.uid === uid) {
+        if (uid && vote.uid === uid) {
             user_td.style.border = '1px solid';
         }
         user_td.textContent = vote.username;
@@ -223,7 +295,7 @@
         return row;
     };
 
-    const create_tooltip_content = (tag_data, all_tags) => {
+    const create_tooltip_content = (tag_data) => {
         const fragment = document.createDocumentFragment();
 
         if (tag_data.is_slave) {
@@ -266,7 +338,7 @@
         }
 
         // add slave tag votes if this is a master tag
-        const slave_tags = all_tags.filter(tag => tag.master_tag === `${tag_data.namespace}:${tag_data.name}`);
+        const slave_tags = slaves_by_master_id.get(tag_data.id) || [];
         for (const slave of slave_tags) {
             const slave_info = document.createElement('tr');
             const info_td = document.createElement('td');
@@ -286,65 +358,144 @@
         return fragment;
     };
 
-    const display_tooltip = (target_element) => {
-        if (!target_element || !tooltip_contents.has(target_element.href)) {
-            tooltip.style.display = 'none';
-            active_tooltip_target = null;
-            return;
+    const resolve_tag_id = (tag_div) => {
+        if (!tag_div) return null;
+
+        if (tag_div.dataset.tagId) {
+            const parsed = Number.parseInt(tag_div.dataset.tagId, 10);
+            if (Number.isFinite(parsed)) return parsed;
         }
 
-        tooltip.innerHTML = '';
-        tooltip.append(tooltip_contents.get(target_element.href).cloneNode(true));
+        const anchor = tag_div.querySelector('a[id^="ta_"]');
+        const onclick_attr = anchor?.getAttribute('onclick') || '';
+        const match = onclick_attr.match(/toggle_tagmenu\((\d+)\s*,\s*'[^']*'\s*,/);
+        if (!match) return null;
 
-        const rect = target_element.getBoundingClientRect();
+        const parsed = Number.parseInt(match[1], 10);
+        if (!Number.isFinite(parsed)) return null;
+        tag_div.dataset.tagId = String(parsed);
+        return parsed;
+    };
+
+    const hide_tooltip = () => {
+        tooltip.style.display = 'none';
+        active_tooltip_target = null;
+    };
+
+    const display_tooltip = (tag_div) => {
+        const tag_id = resolve_tag_id(tag_div);
+        if (!tag_id) return hide_tooltip();
+
+        const tag_data = tags_by_id.get(tag_id);
+        if (!tag_data) return hide_tooltip();
+
+        let content = tooltip_cache.get(tag_id);
+        if (!content) {
+            content = create_tooltip_content(tag_data);
+            tooltip_cache.set(tag_id, content);
+        }
+
+        tooltip.replaceChildren(content.cloneNode(true));
+
+        const rect = tag_div.getBoundingClientRect();
         tooltip.style.left = `${rect.left + window.scrollX}px`;
         tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
         tooltip.style.display = 'block';
     };
 
-    const cache_tooltip_contents = (tags) => {
-        tooltip_contents.clear();
-        // Pre-generate and cache content for all tags
+    const set_tag_data = (tags) => {
+        tags_by_id = new Map(tags.map(tag => [tag.id, tag]));
+        tooltip_cache.clear();
+
+        slaves_by_master_id = new Map();
         for (const tag of tags) {
-            tooltip_contents.set(tag.url, create_tooltip_content(tag, tags));
+            if (!tag.is_slave || !tag.master_tag_id) continue;
+            if (!slaves_by_master_id.has(tag.master_tag_id)) {
+                slaves_by_master_id.set(tag.master_tag_id, []);
+            }
+            slaves_by_master_id.get(tag.master_tag_id).push(tag);
         }
 
-        // If a tooltip was active when the cache updated, refresh its content
-        if (active_tooltip_target) {
-            if (document.body.contains(active_tooltip_target)) {
-                display_tooltip(active_tooltip_target);
-            } else {
-                active_tooltip_target = null;
-                tooltip.style.display = 'none';
-            }
+        if (!active_tooltip_target) return;
+
+        if (!document.body.contains(active_tooltip_target)) {
+            hide_tooltip();
+            return;
         }
+
+        display_tooltip(active_tooltip_target);
     };
 
     const setup_tooltip_events = (gallery_taglist) => {
-        const handle_mouse_enter = (event) => {
-            const tag_element = event.target.closest('a');
-            if (!tag_element) return;
+        const on_over = (event) => {
+            const tag_div = event.target.closest('#taglist div[id^="td_"]');
+            if (!tag_div || !gallery_taglist.contains(tag_div)) return;
+            if (tag_div === active_tooltip_target) return;
 
-            active_tooltip_target = tag_element;
-            display_tooltip(tag_element);
+            active_tooltip_target = tag_div;
+            display_tooltip(tag_div);
         };
 
-        const handle_mouse_leave = () => {
-            tooltip.style.display = 'none';
-            active_tooltip_target = null;
+        const on_out = (event) => {
+            if (!active_tooltip_target) return;
+
+            const from_div = event.target.closest('#taglist div[id^="td_"]');
+            if (!from_div || from_div !== active_tooltip_target) return;
+
+            const related = event.relatedTarget;
+            if (related && from_div.contains(related)) return;
+
+            hide_tooltip();
         };
 
-        gallery_taglist.addEventListener('mouseenter', handle_mouse_enter, true);
-        gallery_taglist.addEventListener('mouseleave', handle_mouse_leave, true);
+        gallery_taglist.addEventListener('pointerover', on_over, true);
+        gallery_taglist.addEventListener('pointerout', on_out, true);
+
+        window.addEventListener('scroll', hide_tooltip, true);
+        window.addEventListener('resize', hide_tooltip, true);
+    };
+
+    let update_scheduled = false;
+    let update_in_flight = false;
+    let update_queued = false;
+
+    const request_update = (gallery_taglist) => {
+        if (update_scheduled) return;
+        update_scheduled = true;
+        queueMicrotask(() => {
+            update_scheduled = false;
+            run_update(gallery_taglist);
+        });
+    };
+
+    const run_update = async (gallery_taglist) => {
+        if (update_in_flight) {
+            update_queued = true;
+            return;
+        }
+
+        update_in_flight = true;
+        try {
+            await update(gallery_taglist);
+        } finally {
+            update_in_flight = false;
+        }
+
+        if (update_queued) {
+            update_queued = false;
+            request_update(gallery_taglist);
+        }
     };
 
     const observe_gallery_taglist = (gallery_taglist) => {
-        const observer = new MutationObserver(mutations => {
+        const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
-                for (const node of mutation.removedNodes) {
-                    if (node.nodeName === 'TABLE') {
-                        update(gallery_taglist);
-                        return;
+                for (const nodes of [mutation.addedNodes, mutation.removedNodes]) {
+                    for (const node of nodes) {
+                        if (node.nodeName === 'TABLE') {
+                            request_update(gallery_taglist);
+                            return;
+                        }
                     }
                 }
             }
@@ -359,17 +510,17 @@
         const tags = parse_taglist(taglist_response);
         if (tags.length === 0) return;
 
+        set_tag_data(tags);
         append_dead_tags(tags, gallery_taglist);
-        cache_tooltip_contents(tags);
     };
 
     const init = () => {
         const gallery_taglist = document.getElementById('taglist');
         if (!gallery_taglist) return;
 
-        observe_gallery_taglist(gallery_taglist);
         setup_tooltip_events(gallery_taglist);
-        update(gallery_taglist);
+        request_update(gallery_taglist);
+        observe_gallery_taglist(gallery_taglist);
     };
 
     init();
