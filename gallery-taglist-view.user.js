@@ -4,11 +4,11 @@
 // @namespace   https://e-hentai.org/
 // @match       https://e-hentai.org/g/*
 // @match       https://exhentai.org/g/*
-// @version     1.0.1
+// @version     1.0.2
 // @grant       GM.addStyle
 // @grant       GM.xmlHttpRequest
 // @grant       unsafeWindow
-// @connect     repo.e-hentai.org
+// @connect     tools.e-hentai.org
 // @author      terry
 // @icon        https://e-hentai.org/favicon.ico
 // ==/UserScript==
@@ -20,15 +20,17 @@
     const taglist = document.getElementById("taglist");
     if (!taglist || !Number.isInteger(page.gid)) return;
 
-    const report_url = `https://repo.e-hentai.org/tools/taglist?gid=${page.gid}`;
+    const report_url = `https://tools.e-hentai.org/tools/taglist?gid=${page.gid}`;
     const user_id = String(page.apiuid || "");
+    const is_eh = location.hostname === "e-hentai.org";
+    const body_style = getComputedStyle(document.body);
     const tooltip = document.createElement("div");
     document.body.append(tooltip);
     tooltip.id = "eh-tag-report";
     tooltip.hidden = true;
-    tooltip.style.backgroundColor = getComputedStyle(document.body).backgroundColor;
-    tooltip.style.color = location.hostname === "e-hentai.org" ? "#000" : getComputedStyle(document.body).color;
-    tooltip.style.setProperty("--link-highlight", location.hostname === "e-hentai.org" ? "#065fd4" : "#7db7ff");
+    tooltip.style.backgroundColor = body_style.backgroundColor;
+    tooltip.style.color = is_eh ? "#000" : body_style.color;
+    tooltip.style.setProperty("--link-highlight", is_eh ? "#065fd4" : "#7db7ff");
     let active_tag;
     let tags_by_id = new Map();
 
@@ -41,7 +43,6 @@
             max-height: min(600px, calc(100vh - 8px));
             overflow: auto;
             padding: 4px;
-            color: inherit;
             border: 1px solid currentColor;
             border-radius: 4px;
             box-shadow: 0 2px 8px #0006;
@@ -72,8 +73,6 @@
         #taglist [data-report-dead] { border-color: red !important; opacity: .5 !important; }
     `);
 
-    const signed = (number) => (number > 0 ? `+${number}` : String(number));
-
     const parse_report = (html) => {
         const doc = new DOMParser().parseFromString(html, "text/html");
         const tags = [];
@@ -86,13 +85,13 @@
             if (!id || !full_name || !name_link) continue;
 
             const score = score_cell.textContent.replace(/\s+/g, " ").trim();
-            const numbers = score.match(/^([+-]?\d+)\s*\/\s*([+-]?\d+)$/);
-            const flags = new Set([...score_cell.querySelectorAll("a")].map((link) => link.textContent.trim()));
+            const flag_links = [...score_cell.querySelectorAll("a")];
+            const flags = new Set(flag_links.map((link) => link.textContent.trim()));
             const special = flags.has("S") || flags.has("B");
             const colon = full_name.indexOf(":");
             const canonical = special || colon >= 0 ? full_name : `temp:${full_name}`;
             const link = new URL(name_link.href);
-            const master_link = [...score_cell.querySelectorAll("a")].find((a) => a.href.includes("mastertag="));
+            const master_link = flag_links.find((a) => a.href.includes("mastertag="));
 
             link.hostname = location.hostname;
             link.search = "";
@@ -103,8 +102,8 @@
                 namespace: special ? "S/B" : colon < 0 ? "temp" : full_name.slice(0, colon),
                 name: special || colon < 0 ? full_name : full_name.slice(colon + 1),
                 url: link.href,
-                score: Number(numbers?.[1] || 0),
-                vetoes: Number(numbers?.[2] || 0),
+                score,
+                vetoes: Number(score.match(/\/ ([+-]?\d+)$/)?.[1]) || 0,
                 slave: flags.has("S"),
                 blocked: flags.has("B"),
                 master_id: Number(master_link && new URL(master_link.href).searchParams.get("mastertag")) || 0,
@@ -113,8 +112,6 @@
             });
         }
 
-        const by_id = new Map(tags.map((tag) => [tag.id, tag]));
-        for (const tag of tags) by_id.get(tag.master_id)?.slaves.push(tag);
         tags.sort(
             (a, b) =>
                 Number(["temp", "S/B"].includes(a.namespace)) - Number(["temp", "S/B"].includes(b.namespace)) ||
@@ -161,13 +158,14 @@
 
         active_tag = element;
         tooltip.replaceChildren();
+        tooltip.style.left = tooltip.style.top = "0";
         const heading = document.createElement("div");
         heading.className = "heading";
         heading.textContent = tag.slave
-            ? `Slave of ${tags_by_id.get(tag.master_id)?.canonical || "unknown master"}`
+            ? `Slave of ${tags_by_id.get(tag.master_id)?.canonical || `tag #${tag.master_id}`}`
             : tag.blocked
               ? "Blocked tag"
-              : `${signed(tag.score)} / ${signed(tag.vetoes)}`;
+              : tag.score;
         tooltip.append(heading);
 
         const table = document.createElement("table");
@@ -190,75 +188,50 @@
         tooltip.hidden = true;
     };
 
-    const mark_tag = (element, tag) => {
-        element.setAttribute("data-report-id", tag.id);
-        if (tag.vetoes >= 3) element.setAttribute("data-report-veto", "up");
-        else if (tag.vetoes < 0) element.setAttribute("data-report-veto", "down");
-        else element.removeAttribute("data-report-veto");
-    };
-
     const render = (tags) => {
         hide_tooltip();
         taglist.querySelectorAll("[data-report-dead]").forEach((element) => element.remove());
 
-        let table = taglist.querySelector("table");
-        if (!table) {
-            table = document.createElement("table");
-            taglist.append(table);
-        }
-        let body = table.tBodies[0];
-        if (!body) {
-            body = document.createElement("tbody");
-            table.append(body);
-        }
+        const body = taglist.querySelector("tbody") || taglist.appendChild(document.createElement("table")).createTBody();
         const cells = new Map([...body.rows].map((row) => [row.querySelector(".tc")?.textContent.trim(), row.lastElementChild]));
-        const by_key = new Map(tags.map((tag) => [tag.key, tag]));
-
-        for (const element of taglist.querySelectorAll('div[id^="td_"]')) {
-            const tag = by_key.get(element.id.slice(3));
-            if (tag) mark_tag(element, tag);
-        }
 
         for (const tag of tags) {
-            if (taglist.querySelector(`#td_${CSS.escape(tag.key)}`)) continue;
+            let element = document.getElementById(`td_${tag.key}`);
+            if (!element) {
+                const namespace = `${tag.namespace}:`;
+                let cell = cells.get(namespace);
+                if (!cell) {
+                    const row = body.insertRow();
+                    const label = row.insertCell();
+                    label.className = "tc";
+                    label.textContent = namespace;
+                    cell = row.insertCell();
+                    cells.set(namespace, cell);
+                }
 
-            const namespace = `${tag.namespace}:`;
-            let cell = cells.get(namespace);
-            if (!cell) {
-                const row = body.insertRow();
-                const label = row.insertCell();
-                label.className = "tc";
-                label.textContent = namespace;
-                cell = row.insertCell();
-                cells.set(namespace, cell);
+                element = document.createElement("div");
+                cell.append(element);
+                element.id = `td_${tag.key}`;
+                element.className = tag.vetoes <= -3 ? "gt" : tag.vetoes < 0 ? "gtl" : "gtw";
+                element.dataset.reportDead = "";
+
+                const link = document.createElement("a");
+                element.append(link);
+                link.id = `ta_${tag.key}`;
+                link.href = tag.url;
+                link.textContent = tag.name;
+                link.onclick = () => page.toggle_tagmenu(tag.id, tag.canonical, link);
+
+                const own_vote = [...tag.votes].find((row) => row.querySelector(`a[href$="uid=${user_id}"]`));
+                if (own_vote) link.className = own_vote.cells[0].textContent.trim().startsWith("+") ? "tup" : "tdn";
             }
 
-            const element = document.createElement("div");
-            cell.append(element);
-            element.id = `td_${tag.key}`;
-            element.className = tag.vetoes <= -3 ? "gt" : tag.vetoes < 0 ? "gtl" : "gtw";
-            element.setAttribute("data-report-dead", "");
-            mark_tag(element, tag);
-
-            const link = document.createElement("a");
-            element.append(link);
-            link.id = `ta_${tag.key}`;
-            link.href = tag.url;
-            link.textContent = tag.name;
-            link.onclick = () => page.toggle_tagmenu(tag.id, tag.canonical, link);
-
-            const own_vote = [...tag.votes].find((row) => row.querySelector(`a[href$="uid=${user_id}"]`));
-            if (own_vote) link.className = own_vote.cells[0].textContent.trim().startsWith("+") ? "tup" : "tdn";
+            element.dataset.reportId = tag.id;
+            if (tag.vetoes >= 3 || tag.vetoes < 0) element.dataset.reportVeto = tag.vetoes < 0 ? "down" : "up";
         }
     };
 
     const fetch_report = async () => {
-        if (location.hostname === "e-hentai.org") {
-            const response = await fetch(report_url, { credentials: "include", cache: "no-store" });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.text();
-        }
-
         const response = await GM.xmlHttpRequest({ method: "GET", url: report_url, nocache: true });
         if (response.status >= 400) throw new Error(`HTTP ${response.status}`);
         return response.responseText;
@@ -270,6 +243,7 @@
             const tags = parse_report(await fetch_report());
             if (!tags.length) throw new Error("No tags found");
             tags_by_id = new Map(tags.map((tag) => [tag.id, tag]));
+            for (const tag of tags) tags_by_id.get(tag.master_id)?.slaves.push(tag);
             render(tags);
         } catch (error) {
             console.error("[Gallery Taglist View]:", error);
