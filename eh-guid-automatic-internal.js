@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tick internal by default
 // @namespace    ehentai repo
-// @version      0.0.1
+// @version      0.0.2
 // @description  Auto checks the send internal button
 // @author       Shank
 // @match        https://tools.e-hentai.org/tools/temptags?tagid=*

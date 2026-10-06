@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Tag Check Links
-// @version      0.3.2
+// @version      0.3.3
 // @description  Add shortcut link(s) to tag checking pages via galleries
 // @author       nasu_sensei
 // @match        https://e-hentai.org/g/*

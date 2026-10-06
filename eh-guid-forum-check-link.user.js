@@ -1,6 +1,6 @@
 ﻿// ==UserScript==
 // @name         Forum User Check Links
-// @version      0.1.1
+// @version      0.1.2
 // @description  Add shortcut link(s) to tag checking pages via forum profile
 // @author       nasu_sensei
 // @match        https://forums.e-hentai.org/index.php?showuser=*

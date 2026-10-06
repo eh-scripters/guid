@@ -5,7 +5,7 @@
 // @match https://tools.e-hentai.org/tools/*gid=*
 // @match https://tools.e-hentai.org/tools/tagapprove*
 // @grant none
-// @version 20240512-1
+// @version 20261006
 // ==/UserScript==
 /*
 @licstart

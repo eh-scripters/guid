@@ -6,7 +6,7 @@
 // @match     https://exhentai.org/g/*
 // @license     GNU GPL v3
 // @copyright   Aquamarine Penguin
-// @version     0.5.5
+// @version     0.5.6
 // @grant       none
 // ==/UserScript==
 /*

@@ -4,7 +4,7 @@
 // @match https://tools.e-hentai.org/tools.php*uid=*
 // @match https://tools.e-hentai.org/tools/*uid=*
 // @grant none
-// @version 20230818
+// @version 20261006
 // ==/UserScript==
 /*
 @licstart

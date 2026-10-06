@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         eh-guid-taglist-view
-// @version      1.2
+// @version      1.2.1
 // @description  Display the Taglist in a more comprehensive way.
 // @match        https://tools.e-hentai.org/tools/taglist?uid=*
 // @author       -terry-
