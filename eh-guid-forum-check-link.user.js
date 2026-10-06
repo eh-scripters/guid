@@ -18,7 +18,7 @@
   }
 
   var usernameElement = document.getElementById('profilename').children[0];
-  usernameElement.innerHTML += '<small><a target="_blank" style="text-decoration:none" href="https://repo.e-hentai.org/tools/taglist?uid=' + uid + '"> ✔</small>';
+  usernameElement.innerHTML += '<small><a target="_blank" style="text-decoration:none" href="https://tools.e-hentai.org/tools/taglist?uid=' + uid + '"> ✔</small>';
 })();
 
 console.log("eh-guid-forum-user-check-link is active");

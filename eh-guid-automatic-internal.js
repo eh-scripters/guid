@@ -4,7 +4,7 @@
 // @version      0.0.1
 // @description  Auto checks the send internal button
 // @author       Shank
-// @match        https://repo.e-hentai.org/tools/temptags?tagid=*
+// @match        https://tools.e-hentai.org/tools/temptags?tagid=*
 // @grant        none
 // ==/UserScript==
 

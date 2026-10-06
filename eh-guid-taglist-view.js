@@ -2,7 +2,7 @@
 // @name         eh-guid-taglist-view
 // @version      1.2
 // @description  Display the Taglist in a more comprehensive way.
-// @match        https://repo.e-hentai.org/tools/taglist?uid=*
+// @match        https://tools.e-hentai.org/tools/taglist?uid=*
 // @author       -terry-
 // @grant        none
 // ==/UserScript==

@@ -98,7 +98,7 @@ find this file, see <http://www.gnu.org/licenses/>.
 
 (function () {
   var script_uuid = "eh-guid-report-view";
-  var taglistUrl = "https://repo.e-hentai.org/tools/taglist?gid=";
+  var taglistUrl = "https://tools.e-hentai.org/tools/taglist?gid=";
 
   function scriptPanel() {
     var panelId = "penguin-script-panel";

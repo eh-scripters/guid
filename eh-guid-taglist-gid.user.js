@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name EH GUID Gallery Tag List
 // @description Adds user tag check and tag group links to tools.php gid
-// @match https://repo.e-hentai.org/tools.php*gid=*
-// @match https://repo.e-hentai.org/tools/*gid=*
-// @match https://repo.e-hentai.org/tools/tagapprove*
+// @match https://tools.e-hentai.org/tools.php*gid=*
+// @match https://tools.e-hentai.org/tools/*gid=*
+// @match https://tools.e-hentai.org/tools/tagapprove*
 // @grant none
 // @version 20240512-1
 // ==/UserScript==

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name EH GUID User Tag List
 // @description Adds gallery check links and some user stats to taglist uid
-// @match https://repo.e-hentai.org/tools.php*uid=*
-// @match https://repo.e-hentai.org/tools/*uid=*
+// @match https://tools.e-hentai.org/tools.php*uid=*
+// @match https://tools.e-hentai.org/tools/*uid=*
 // @grant none
 // @version 20230818
 // ==/UserScript==

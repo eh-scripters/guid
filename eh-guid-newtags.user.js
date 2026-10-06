@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name EH GUID New Tags
 // @description Adds filters to tools.php newtags
-// @match https://repo.e-hentai.org/tools.php*act=newtags*
-// @match https://repo.e-hentai.org/tools/newtags*
+// @match https://tools.e-hentai.org/tools.php*act=newtags*
+// @match https://tools.e-hentai.org/tools/newtags*
 // @grant none
 // @version 20230818
 // ==/UserScript==

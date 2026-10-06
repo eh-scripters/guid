@@ -29,7 +29,7 @@
     return panel;
   }
 
-  var baseToolsURL = "https://repo.e-hentai.org/tools/taglist?gid=";
+  var baseToolsURL = "https://tools.e-hentai.org/tools/taglist?gid=";
   var galleryID = window.location.pathname.split("/")[2];
 
   var label = document.createElement("div");
